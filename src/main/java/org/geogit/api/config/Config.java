@@ -17,16 +17,20 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.geogit.api.ObjectId;
+import org.geogit.api.Ref;
+import org.geogit.api.RemoteAddOp;
+import org.geogit.repository.Repository;
+
 import com.google.common.base.Preconditions;
 
 /**
  * The config object for this GeoGIT repository, this represents the storage of: CORE, REMOTE and
  * BRANCH config elements in the git format: [core] [remote "origin"] fetch =
  * refs/heads/*:refs/remotes/origin url = C:\java\GeoGIT\target\mockblobstore TODO: current
- * limitations: there is no CORE element and no BRANCH element.
+ * limitations: there is no CORE elements read or written.
  * 
  * @author jhudson
- * @since 1.2.0
  */
 public class Config {
 
@@ -46,17 +50,19 @@ public class Config {
     private Map<String, BranchConfigObject> branches;
 
     private File configFile;
+    private Repository repo;
 
-    public Config( final File repoLocation ) {
-        Preconditions.checkNotNull(repoLocation);
-
+    public Config( final Repository repo ) {
+        Preconditions.checkNotNull(repo);
+        this.repo = repo;
         this.remotes = new HashMap<String, RemoteConfigObject>();
         this.branches = new HashMap<String, BranchConfigObject>();
-        this.configFile = new File(repoLocation, CONFIG_FILE);
+        this.configFile = new File(repo.getRepositoryHome(), CONFIG_FILE);
 
         try {
             if (!this.configFile.exists()) {
                 this.configFile.createNewFile();
+                writeConfig();
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -64,15 +70,7 @@ public class Config {
         }
 
         readConfig();
-
-        if (remotes.size() < 1) { /* yunh origin? */
-            RemoteConfigObject origin = new RemoteConfigObject("origin",
-                    "refs/heads/*:refs/remotes/origin", repoLocation.getAbsolutePath());
-            addRemoteConfigObject(origin);
-            addBranch(new BranchConfigObject("master", "origin", "refs/head/master"));
-        }
     }
-
     private void addBranch( BranchConfigObject branchConfigObject ) {
         this.branches.put(branchConfigObject.getName(), branchConfigObject);
         writeConfig();
@@ -124,7 +122,7 @@ public class Config {
             }
         }
     }
-    
+
     /**
      * Process the [remote "REMOTE_NAME"] config from a git config file. Remember this using the
      * original scanner which pushes the read head further along, dont realy on it being at the same
@@ -189,13 +187,13 @@ public class Config {
             // TODO: write Core config
             out.write("[core]" + NEW_LINE);
 
-            //write branches
+            // write branches
             for( BranchConfigObject branch : branches.values() ) {
-                out.write("[remote \"" + branch.getName() + "\"]" + NEW_LINE);
+                out.write("[branch \"" + branch.getName() + "\"]" + NEW_LINE);
                 out.write(TAB + "fetch = " + branch.getRemote() + NEW_LINE);
                 out.write(TAB + "merge = " + branch.getMerge() + NEW_LINE);
             }
-            
+
             // write remotes
             for( RemoteConfigObject remote : remotes.values() ) {
                 out.write("[remote \"" + remote.getName() + "\"]" + NEW_LINE);
@@ -220,5 +218,8 @@ public class Config {
 
     public Map<String, RemoteConfigObject> getRemotes() {
         return this.remotes;
+    }
+    public Map<String, BranchConfigObject> getBranches() {
+        return this.branches;
     }
 }

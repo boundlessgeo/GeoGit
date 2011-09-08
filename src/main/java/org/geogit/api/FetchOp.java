@@ -1,25 +1,32 @@
 package org.geogit.api;
 
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
+import org.geogit.api.RevObject.TYPE;
+import org.geogit.api.config.RefIO;
 import org.geogit.api.config.RemoteConfigObject;
 import org.geogit.repository.Repository;
 import org.geogit.repository.remote.IRemote;
 import org.geogit.repository.remote.RemoteRepositoryFactory;
-import org.geogit.storage.CommitWriter;
+import org.geogit.repository.remote.payload.IPayload;
+import org.geogit.storage.BlobWriter;
+import org.geogit.storage.ObjectInserter;
+import org.geogit.storage.WrappedSerialisingFactory;
+
+import com.google.common.base.Preconditions;
 
 /**
- * Download objects and refs from another repository, currently only works for fast forwards from HEAD of remote
- * http://git-scm.com/gitserver.txt 
+ * Download objects and refs from another repository, currently only works for fast forwards from
+ * HEAD of remote http://git-scm.com/gitserver.txt
+ * 
+ * TODO: roll back on any errors
  * 
  * @author jhudson
  */
 public class FetchOp extends AbstractGeoGitOp<Void> {
 
     private Map<String, RemoteConfigObject> remotes;
-    
+
     public FetchOp( Repository repository, Map<String, RemoteConfigObject> remotes ) {
         super(repository);
         this.remotes = remotes;
@@ -27,57 +34,87 @@ public class FetchOp extends AbstractGeoGitOp<Void> {
 
     @Override
     public Void call() throws Exception {
-        for (RemoteConfigObject remote : remotes.values()) {
+        /**
+         * For each remote_service : 
+         * 		get the refs/remotes/REF_NAME/REMOTE(S)
+					For ALL res/remotes/REF_NAME/REMOTE_ID send remote_service (REF_NAMES<REMOTE_ID> receive packfile
+         * with 1. REMOTE_NAME <commits> 2. Add commits to object DB 3. update ref in reb DB 4.
+         * write config
+         */
+        for( RemoteConfigObject remote : remotes.values() ) {
             if (remote != null) {
+            	WrappedSerialisingFactory fact = WrappedSerialisingFactory.getInstance();
 
-                IRemote remoteRepo = RemoteRepositoryFactory.createRemoteRepositroy(remote.getUrl());
+            	IRemote remoteRepo = RemoteRepositoryFactory.createRemoteRepositroy(remote.getUrl());
+            	Preconditions.checkNotNull(remoteRepo);
 
-                LogOp logOp = new LogOp(remoteRepo.getRepository());
+            	IPayload payload = remoteRepo.requestFetchPayload(RefIO.getRemoteList(getRepository().getRepositoryHome(),remote.getName()));
+            	Preconditions.checkNotNull(payload);
+
+                int commits = 0;
+                int deltas = 0;
+
+                final ObjectInserter objectInserter = getRepository().newObjectInserter();
 
                 /**
-                 * If the repositories are at the same ref, return
+                 * Update the local repos commits
                  */
-                if (getRepository().getHead().getObjectId().equals(remoteRepo.getRepository().getHead().getObjectId())) {
-                    LOGGER.info("Remote ("+ remote.getName()  + ") has same head ID, nothing to do");
-                    remoteRepo.dispose();
-                    return null;
+                for (RevCommit commit: payload.getCommitUpdates()) {
+                    commits++;
+                    ObjectId commitId = objectInserter.insert(fact.createCommitWriter(commit));
+                    getRepository().getRefDatabase().put(new Ref(remote.getName(), commitId, TYPE.COMMIT));
+                    //LOGGER.info("Adding commit: " + commit.toString());
                 }
 
                 /**
-                 * If local has no commits don't set since, since we need all refs
+                 * Update the local repos trees
                  */
-                if (!getRepository().getHead().getObjectId().equals(ObjectId.NULL/* THE HEAD */)) {
-                    logOp.setSince(getRepository().getHead().getObjectId());
+                for (RevTree tree: payload.getTreeUpdates()) {
+                    //LOGGER.info("Adding tree: " + tree.toString());
+                    ObjectId treeId = objectInserter.insert(fact.createRevTreeWriter(tree));
+                    getRepository().getRefDatabase().put(new Ref(remote.getName(), treeId, TYPE.TREE));
                 }
 
-                Iterator<RevCommit> logs = logOp.call();
-
-                int objects = 0;
-
-                if (logs != null) {
-                    while( logs.hasNext() ) {
-                        RevCommit rc = logs.next();
-                        LOGGER.info(rc.toString());
-                        objects++;
-
-                        // need to get the remote repos refs DB and add it to my own with the
-                        // remotes full name.
-                        ObjectId commitId = getRepository().getObjectDatabase().put(new CommitWriter(rc));
-                        Ref ref = new Ref(remote.getName(), commitId, RevObject.TYPE.COMMIT);
-                        getRepository().getRefDatabase().put(ref);
-                    }
+                /**
+                 * Update the local repos blobs
+                 */
+                for (RevBlob blob: payload.getBlobUpdates()) {
+                    deltas++;
+                    ObjectId blobId = objectInserter.insert(new BlobWriter((byte[])blob.getParsed()));
+                    getRepository().getRefDatabase().put(new Ref(remote.getName(), blobId, TYPE.BLOB));
                 }
-                
-                //set the current ref for this new set of commits
-                List<Ref> remotes1 = remoteRepo.getRepository().getRefDatabase().getRefs(Ref.HEAD);
 
-                for( Ref r : remotes1 ) { /*There will only be one*/
-                    Ref ref = new Ref(remote.getName(), r.getObjectId(), RevObject.TYPE.COMMIT);
+                /**
+                 * Update the local repos tags, there are none...
+                for (RevTag tag: payload.getTagUpdates()) {
+                    deltas++;
+                    ObjectId tagId = objectInserter.insert(new RevTagWriter(tag));
+                    Ref ref = new Ref(remote.getName(), tagId, TYPE.TAG);
                     getRepository().getRefDatabase().put(ref);
                 }
+                */
 
-                LOGGER.info("Remote: counted " + objects + " objects, done.");
-                LOGGER.info("Added " + objects + " objects to " + remote.getName());
+                LOGGER.info("Remote: counted " + commits + " commits (" + deltas + " deltas), done.");
+                LOGGER.info("Added " + commits + " new commits added to repository");
+                LOGGER.info("Added " + deltas + " new deltas added to repository");
+
+                /**
+                 * Update the local repos branch refs for the remote
+                 */
+                for (String branchName: payload.getBranchUpdates().keySet()) {
+                    Ref ref = payload.getBranchUpdates().get(branchName);
+                    /*
+                     * Now we must write out all the remote heads - so we can keep track of them for fetches
+                     */
+                    Ref remoteRef = new Ref(Ref.REMOTES_PREFIX+remote.getName()+"/"+Ref.MASTER, ref.getObjectId(), TYPE.REMOTE);
+                    Ref oldRef = getRepository().getRef(remoteRef.getName());
+
+                    if (oldRef!=null && !oldRef.equals(remoteRef)){
+                        LOGGER.info("  " + remoteRef.getObjectId().printSmallId() + " " + branchName + " -> " + remoteRef.getName());
+                        getRepository().updateRef(remoteRef);
+                        RefIO.writeRemoteRefs(getRepository().getRepositoryHome(), remote.getName(), branchName, ref.getObjectId());
+                    }
+                }
 
                 // close the remote
                 remoteRepo.dispose();

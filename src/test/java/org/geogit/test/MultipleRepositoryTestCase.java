@@ -5,10 +5,11 @@
 package org.geogit.test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import junit.framework.TestCase;
 
@@ -17,12 +18,10 @@ import org.geogit.api.GeoGIT;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
-import org.geogit.api.RevObject;
 import org.geogit.repository.Repository;
 import org.geogit.repository.StagingArea;
-import org.geogit.storage.CommitWriter;
-import org.geogit.storage.FeatureWriter;
 import org.geogit.storage.RepositoryDatabase;
+import org.geogit.storage.WrappedSerialisingFactory;
 import org.geogit.storage.bdbje.EntityStoreConfig;
 import org.geogit.storage.bdbje.EnvironmentBuilder;
 import org.geogit.storage.bdbje.JERepositoryDatabase;
@@ -86,6 +85,8 @@ public abstract class MultipleRepositoryTestCase extends TestCase {
     protected Feature lines3;
 
     protected Collection<Repository> repos;
+    
+    protected final Logger LOGGER;
 
     // prevent recursion
     private boolean setup = false;
@@ -96,6 +97,7 @@ public abstract class MultipleRepositoryTestCase extends TestCase {
     
     public MultipleRepositoryTestCase( int numberOfRepos ) {
         super();
+        LOGGER = Logging.getLogger(getClass());
         this.numberOfRepos = numberOfRepos;
     }
 
@@ -112,29 +114,7 @@ public abstract class MultipleRepositoryTestCase extends TestCase {
 
         for (int i=0;i<numberOfRepos;i++){
 
-            final File envHome = new File(new File("target/project"+i), "geogit");
-            final File repositoryHome = new File(envHome, "repository");
-            final File indexHome = new File(envHome, "index");
-    
-            FileUtils.deleteDirectory(envHome);
-            repositoryHome.mkdirs();
-            indexHome.mkdirs();
-    
-            EntityStoreConfig config = new EntityStoreConfig();
-            config.setCacheMemoryPercentAllowed(50);
-            EnvironmentBuilder esb = new EnvironmentBuilder(config);
-            Properties bdbEnvProperties = null;
-            Environment environment;
-            environment = esb.buildEnvironment(repositoryHome, bdbEnvProperties);
-
-            Environment stagingEnvironment;
-            stagingEnvironment = esb.buildEnvironment(indexHome, bdbEnvProperties);
-    
-            repositoryDatabase = new JERepositoryDatabase(environment, stagingEnvironment);
-
-            Repository repo = new Repository(repositoryDatabase, envHome);
-    
-            repo.create();
+            Repository repo = createRepo(i, true);
     
             pointsType = DataUtilities.createType(pointsNs, pointsName, pointsTypeSpec);
     
@@ -155,6 +135,35 @@ public abstract class MultipleRepositoryTestCase extends TestCase {
         }
 
         setUpInternal();
+    }
+
+    protected Repository createRepo( int i, boolean delete ) throws IOException {
+        final File envHome = new File(new File("target/project"+i), "geogit");
+        final File repositoryHome = new File(envHome, "repository");
+        final File indexHome = new File(envHome, "index");
+   
+        if (delete){
+            FileUtils.deleteDirectory(envHome);
+            repositoryHome.mkdirs();
+            indexHome.mkdirs();
+        }
+        
+        EntityStoreConfig config = new EntityStoreConfig();
+        config.setCacheMemoryPercentAllowed(50);
+        EnvironmentBuilder esb = new EnvironmentBuilder(config);
+        Properties bdbEnvProperties = null;
+        Environment environment;
+        environment = esb.buildEnvironment(repositoryHome, bdbEnvProperties);
+
+        Environment stagingEnvironment;
+        stagingEnvironment = esb.buildEnvironment(indexHome, bdbEnvProperties);
+   
+        repositoryDatabase = new JERepositoryDatabase(environment, stagingEnvironment);
+
+        Repository repo = new Repository(repositoryDatabase, envHome);
+   
+        repo.create();
+        return repo;
     }
 
     @Override
@@ -183,18 +192,6 @@ public abstract class MultipleRepositoryTestCase extends TestCase {
     public Repository getRepository(int index) {
         return repos.toArray(new Repository[repos.size()])[index];
     }
-    
-    protected void insterInto(GeoGIT ggit, String id) throws Exception{
-        RevCommit insert = new RevCommit(ObjectId.forString(id));
-        insert.setTreeId(ObjectId.forString("treetest"));
-        insert.setAuthor("jhudson");
-        insert.setMessage("insert");
-        insert.setParentIds(Arrays.asList(ggit.getRepository().getHead().getObjectId()));
-
-        ObjectId commitId = ggit.getRepository().getObjectDatabase().put(new CommitWriter(insert));
-        Ref ref = new Ref(Ref.HEAD, commitId, RevObject.TYPE.COMMIT);
-        ggit.getRepository().getRefDatabase().put(ref);
-    }
 
     protected Feature feature(SimpleFeatureType type, String id, Object... values)
             throws ParseException {
@@ -214,23 +211,24 @@ public abstract class MultipleRepositoryTestCase extends TestCase {
     /**
      * Inserts the Feature to the index and stages it to be committed.
      */
-    protected void insertAddCommit(GeoGIT gg, Feature f) throws Exception {
+    protected RevCommit insertAddCommit(GeoGIT gg, Feature f) throws Exception {
         insert(gg, f);
         gg.add().call();
-        gg.commit().setAll(true).call();
+        return gg.commit().setMessage("commited a new feature").setAll(true).call();
     }
 
     /**
      * Inserts the feature to the index but does not stages it to be committed
      */
-    protected ObjectId insert(GeoGIT gg, Feature f) throws Exception {
+    protected ObjectId insert(GeoGIT gg, Feature feature) throws Exception {
         final StagingArea index = gg.getRepository().getIndex();
-        Name name = f.getType().getName();
+        Name name = feature.getType().getName();
         String namespaceURI = name.getNamespaceURI();
         String localPart = name.getLocalPart();
-        String id = f.getIdentifier().getID();
+        String id = feature.getIdentifier().getID();
 
-        Ref ref = index.inserted(new FeatureWriter(f), f.getBounds(), namespaceURI, localPart, id);
+        WrappedSerialisingFactory fact = WrappedSerialisingFactory.getInstance();
+        Ref ref = index.inserted(fact.createFeatureWriter(feature), feature.getBounds(), namespaceURI, localPart, id);
         ObjectId objectId = ref.getObjectId();
         return objectId;
     }

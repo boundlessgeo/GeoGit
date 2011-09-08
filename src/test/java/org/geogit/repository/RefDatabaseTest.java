@@ -28,11 +28,17 @@ public class RefDatabaseTest extends RepositoryTestCase {
         assertEquals(ObjectId.NULL, refDb.getRef(Ref.MASTER).getObjectId());
         assertEquals(ObjectId.NULL, refDb.getRef(Ref.HEAD).getObjectId());
     }
-    
+
     public void testNewRef(){        
-        ggit.remoteAddOp().setName(Ref.REMOTES_PREFIX+"origin").setFetch("refs/heads/*:refs/remotes/origin").setUrl(getRepository().getRepositoryHome().getAbsolutePath()).call();
-        assertEquals(ObjectId.NULL, refDb.getRef(Ref.REMOTES_PREFIX+"origin").getObjectId());
+        ggit.remoteAddOp().setName("john").setFetch("john").setUrl("http://localhost:8080/projects/mygeogit").call();
+        assertEquals(1, refDb.getRefs(Ref.REMOTES_PREFIX+"john").size());
+        assertEquals(ObjectId.NULL, refDb.getRef(Ref.REMOTES_PREFIX+"john"+"/"+Ref.MASTER).getObjectId());
         assertEquals(1, refDb.getRefs(Ref.REMOTES_PREFIX).size());
+    }
+
+    public void testGetRef(){
+        ggit.remoteAddOp().setName("john").setFetch("john").setUrl("http://localhost:8080/projects/mygeogit").call();
+        assertEquals(ObjectId.NULL, ggit.getRepository().getRef(Ref.REMOTES_PREFIX+"john"+"/"+Ref.MASTER).getObjectId());
     }
 
     public void testPutGetRef() {

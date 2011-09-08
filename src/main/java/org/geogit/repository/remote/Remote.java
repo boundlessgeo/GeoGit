@@ -1,46 +1,62 @@
 package org.geogit.repository.remote;
 
-import org.apache.commons.httpclient.URI;
-import org.apache.commons.httpclient.URIException;
-import org.geogit.repository.Repository;
+import java.util.Map;
 
- /**
-  * A Remote is a single end point of a request/response geogit instance which response to git protocol  
-  * 
-  * @author jhudson
-  */
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.geogit.repository.remote.payload.IPayload;
+import org.geogit.repository.remote.payload.Payload;
+
+/**
+ * Using the NetworkIO class retrieve a remote GeoGIT repository
+ * 
+ * @author jhudson
+ */
 public class Remote extends AbstractRemote {
 
-    private final URI uri;
-    
-    public Remote( String location ) throws URIException, NullPointerException {
-        this.uri = new URI(location, true);
-    }
+    private final String location;
 
-    public URI getUri() {
-        return uri;
-    }
-
-    @Override
-    public String toString() {
-        return "Remote [uri=" + getUri() + "]";
-    }
-
-    @Override
-    public Repository getRepository() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public void setRepository( Repository repo ) {
-        // TODO Auto-generated method stub
-        
+    public Remote(String location) throws NullPointerException {
+        this.location = location;
     }
 
     @Override
     public void dispose() {
         // TODO Auto-generated method stub
-        
+    }
+
+    @Override
+    public IPayload requestFetchPayload(Map<String, String> branchHeads) {
+
+        Payload payload = null;
+
+        StringBuffer branchBuffer = new StringBuffer();
+
+        for (String branchName : branchHeads.keySet()) {
+            branchBuffer.append(branchName + ":" + branchHeads.get(branchName) + ",");
+        }
+
+        String branches = branchBuffer.toString();
+
+        if (branches.length() > 0) {
+            branches = branches.substring(branches.length() - 1);
+        }
+
+        DefaultHttpClient httpclient = new DefaultHttpClient();
+
+        try {
+            HttpGet httpget = new HttpGet(location + "?branches=" + branches);
+            HttpResponse response = httpclient.execute(httpget);
+            HttpEntity entity = response.getEntity();
+            payload = NetworkIO.receivePayload(entity.getContent());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            httpclient.getConnectionManager().shutdown();
+        }
+
+        return payload;
     }
 }
