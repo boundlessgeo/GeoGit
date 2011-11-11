@@ -21,10 +21,14 @@ import com.vividsolutions.jts.geom.Geometry;
  * @author mleslie
  */
 enum EntityType implements Serializable {
-    STRING(0), BOOLEAN(1), BYTE(2), DOUBLE(3), BIGDECIMAL(4), FLOAT(5), INT(6), BIGINT(7), LONG(8), BOOLEAN_ARRAY(
-            11), BYTE_ARRAY(12), CHAR_ARRAY(13), DOUBLE_ARRAY(14), FLOAT_ARRAY(15), INT_ARRAY(16), LONG_ARRAY(
-            17), GEOMETRY(9), NULL(10), UNKNOWN_SERIALISABLE(18), UNKNOWN(19);
-
+    STRING(0, String.class), BOOLEAN(1, Boolean.class), BYTE(2, Byte.class), DOUBLE(3, Double.class), 
+    BIGDECIMAL(4, BigDecimal.class), FLOAT(5, Float.class), INT(6, Integer.class), 
+    BIGINT(7, BigInteger.class), LONG(8, Long.class), BOOLEAN_ARRAY(11, boolean[].class), 
+    BYTE_ARRAY(12, byte[].class), CHAR_ARRAY(13, char[].class), DOUBLE_ARRAY(14, double[].class), 
+    FLOAT_ARRAY(15, float[].class), INT_ARRAY(16, int[].class), LONG_ARRAY(17, long[].class), 
+    GEOMETRY(9, Geometry.class), NULL(10, null), UNKNOWN_SERIALISABLE(18, Serializable.class), 
+    UNKNOWN(19, null);
+    
     public static EntityType determineType(Object value) {
         if (value == null)
             return NULL;
@@ -68,13 +72,29 @@ enum EntityType implements Serializable {
     }
 
     private int value;
+    private Class binding;
 
-    private EntityType(int value) {
+    private EntityType(int value, Class binding) {
         this.value = value;
+        this.binding = binding;
     }
 
     public int getValue() {
         return this.value;
+    }
+    
+    public Class getBinding() {
+        return this.binding;
+    }
+    
+    public static EntityType fromBinding(Class cls) {
+        if(cls == null)
+            return NULL;
+        for (EntityType type : EntityType.values()) {
+            if(type.binding != null && type.binding.isAssignableFrom(cls))
+                return type;
+        }
+        return UNKNOWN;
     }
 
     /**
