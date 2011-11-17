@@ -90,6 +90,15 @@ enum EntityType implements Serializable {
     public static EntityType fromBinding(Class cls) {
         if(cls == null)
             return NULL;
+        /*
+         * We're handling equality first, as some entity types are top-level
+         * catch-alls, and we can't rely on processing order to ensure the 
+         * more specific cases are handled first.
+         */
+        for (EntityType type : EntityType.values()) {
+            if(type.binding != null && type.binding.equals(cls))
+                return type;
+        }
         for (EntityType type : EntityType.values()) {
             if(type.binding != null && type.binding.isAssignableFrom(cls))
                 return type;
@@ -105,8 +114,9 @@ enum EntityType implements Serializable {
      */
     public static EntityType fromValue(int value) {
         for (EntityType type : EntityType.values()) {
-            if (type.value == value)
+            if (type.value == value) {
                 return type;
+            }
         }
         return null;
     }
