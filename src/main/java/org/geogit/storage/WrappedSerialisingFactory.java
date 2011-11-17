@@ -9,7 +9,9 @@ import org.geogit.api.RevTree;
 import org.geogit.repository.ConfigurationContext;
 import org.geotools.factory.Hints;
 import org.opengis.feature.Feature;
+import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.FeatureType;
+import org.opengis.feature.type.Name;
 
 public class WrappedSerialisingFactory implements ObjectSerialisingFactory {
     private static WrappedSerialisingFactory instance;
@@ -57,6 +59,18 @@ public class WrappedSerialisingFactory implements ObjectSerialisingFactory {
                 .getBean("serialisingFactory");
     }
 
+    @Override
+    public ObjectReader<SimpleFeatureType> createSimpleFeatureTypeReader(
+            Name typeName) {
+        return wrappedFactory.createSimpleFeatureTypeReader(typeName);
+    }
+
+    @Override
+    public ObjectWriter<SimpleFeatureType> createSimpleFeatureTypeWriter(
+            SimpleFeatureType type) {
+        return wrappedFactory.createSimpleFeatureTypeWriter(type);
+    }
+    
     public static synchronized WrappedSerialisingFactory getInstance() {
         if (instance == null) {
             instance = new WrappedSerialisingFactory();
