@@ -11,12 +11,16 @@ import java.util.Map.Entry;
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.RevCommit;
+import org.geogit.api.RevFeature;
 import org.geogit.api.RevObject;
 import org.geogit.api.RevTree;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedMap;
 
 /**
@@ -35,11 +39,38 @@ public class CatObject extends AbstractGeoGitOp<CharSequence> {
     public CharSequence call() {
         Preconditions.checkState(object != null);
         RevObject revObject = object.get();
-        if (revObject instanceof RevTree) {
+        if (revObject instanceof RevFeature) {
+            RevFeature feature = (RevFeature) revObject;
+            StringBuilder sb = new StringBuilder();
+            sb.append(feature.getId().toString()).append("\n");
+            ImmutableList<Optional<Object>> values = feature.getValues();
+            for (Optional<Object> value : values) {
+                if (value.isPresent()) {
+                    sb.append(value.get().toString()).append("\n");
+                } else {
+                    sb.append(value.toString()).append("\n");
+                }
+            }
+            return sb.toString();
+        } else if (revObject instanceof RevTree) {
             return new CatTree((RevTree) revObject).call();
+        } else if (revObject instanceof RevCommit) {
+            StringBuilder sb = new StringBuilder();
+            RevCommit commit = (RevCommit) revObject;
+            sb.append(commit.getId()).append("\n");
+            sb.append(commit.getTimestamp()).append("\n");
+            sb.append(commit.getMessage()).append("\n");
+            sb.append(commit.getAuthor()).append("\n");
+            sb.append(commit.getCommitter()).append("\n");
+            sb.append(commit.getTreeId()).append("\n");
+            RevTree revTree = command(RevObjectParse.class).setObjectId(commit.getTreeId())
+                    .call(RevTree.class).get();
+            sb.append(new CatTree(revTree).call());
+            return sb.toString();
+        } else {
+            throw new UnsupportedOperationException("not implemented for "
+                    + revObject.getClass().getName());
         }
-        throw new UnsupportedOperationException("not implemented for "
-                + revObject.getClass().getName());
     }
 
     private class CatTree {
@@ -59,9 +90,10 @@ public class CatObject extends AbstractGeoGitOp<CharSequence> {
 
         private void printTree(RevTree tree, final int indent) {
             println(tree.getId().toString());
-            printChildren(tree.children(), indent);
             if (tree.buckets().isPresent()) {
                 printBuckets(tree.buckets().get(), indent);
+            } else {
+                printChildren(tree.children(), indent);
             }
         }
 

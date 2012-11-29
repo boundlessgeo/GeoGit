@@ -15,7 +15,7 @@ import org.junit.rules.ExpectedException;
 
 import com.google.common.collect.Iterators;
 
-public class LsFeaturesOpTest extends RepositoryTestCase {
+public class LsTreeOpTest extends RepositoryTestCase {
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
