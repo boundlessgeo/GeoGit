@@ -25,6 +25,9 @@ import static org.geogit.api.plumbing.diff.DiffEntry.ChangeType.MODIFIED;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import jline.console.ConsoleReader;
 
@@ -32,18 +35,22 @@ import org.fusesource.jansi.Ansi;
 import org.geogit.api.GeoGIT;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.plumbing.AttributeDiff;
+import org.geogit.api.plumbing.DiffFeature;
+import org.geogit.api.plumbing.FeatureDiff;
 import org.geogit.api.plumbing.diff.DiffEntry;
+import org.geogit.api.plumbing.diff.DiffEntry.ChangeType;
 import org.geogit.api.porcelain.DiffOp;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.AnsiDecorator;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.repository.Repository;
-import org.geogit.storage.ObjectReader;
-import org.geogit.storage.StagingDatabase;
+import org.opengis.feature.type.PropertyDescriptor;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 
 /**
@@ -86,7 +93,8 @@ public class Diff extends AbstractCommand implements CLICommand {
     @Override
     protected void runInternal(GeogitCLI cli) throws Exception {
         if (refSpec.size() > 2) {
-            cli.getConsole().println("commit list is too long :" + refSpec);
+            cli.getConsole().println("Commit list is too long :" + refSpec);
+            return;
         }
         GeoGIT geogit = cli.getGeogit();
 
@@ -97,18 +105,33 @@ public class Diff extends AbstractCommand implements CLICommand {
 
         diff.setOldVersion(oldVersion).setNewVersion(newVersion).setCompareIndex(cached);
 
-        Iterator<DiffEntry> entries = diff.setProgressListener(cli.getProgressListener()).call();
-
-        DiffPrinter printer;
-        if (raw) {
-            printer = new RawPrinter();
+        Iterator<DiffEntry> entries;
+        if (paths.isEmpty()) {
+            entries = diff.setProgressListener(cli.getProgressListener()).call();
         } else {
-            printer = new FullPrinter();
+            entries = Iterators.emptyIterator();
+            for (String path : paths) {
+                Iterator<DiffEntry> moreEntries = diff.setFilter(path)
+                        .setProgressListener(cli.getProgressListener()).call();
+                entries = Iterators.concat(entries, moreEntries);
+            }
         }
+
+        if (!entries.hasNext()) {
+            cli.getConsole().println("No differences found");
+            return;
+        }
+
+        RawPrinter rawPrinter = new RawPrinter();
+        FullPrinter fullPrinter = new FullPrinter();
+
         DiffEntry entry;
         while (entries.hasNext()) {
             entry = entries.next();
-            printer.print(geogit, cli.getConsole(), entry);
+            rawPrinter.print(geogit, cli.getConsole(), entry);
+            if (!raw) {
+                fullPrinter.print(geogit, cli.getConsole(), entry);
+            }
         }
     }
 
@@ -165,26 +188,49 @@ public class Diff extends AbstractCommand implements CLICommand {
             ansi.a("  ").a(formatPath(entry));
 
             console.println(ansi.toString());
+
         }
 
         private String shortOid(ObjectId oid) {
             return new StringBuilder(oid.toString().substring(0, 6)).append("...").toString();
         }
+
     }
 
     private static class FullPrinter implements DiffPrinter {
+
         @Override
-        public void print(GeoGIT geogit, ConsoleReader console, DiffEntry entry) throws IOException {
+        public void print(GeoGIT geogit, ConsoleReader console, DiffEntry diffEntry)
+                throws IOException {
 
-            Repository repository = geogit.getRepository();
-            StagingDatabase index = repository.getIndex().getDatabase();
+            if (diffEntry.changeType() == ChangeType.MODIFIED) {
+                FeatureDiff diff = geogit.command(DiffFeature.class)
+                        .setNewVersion(Suppliers.ofInstance(diffEntry.getNewObject()))
+                        .setOldVersion(Suppliers.ofInstance(diffEntry.getOldObject())).call();
+                Map<PropertyDescriptor, AttributeDiff<?>> diffs = diff.getDiffs();
 
-            // final String oldPath = entry.oldPath();
-            // final String newPath = entry.newPath();
+                Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isAnsiSupported());
 
-            ObjectId id = null;
-            ObjectReader<Object> reader = null;
-            index.get(id, reader);
+                Set<Entry<PropertyDescriptor, AttributeDiff<?>>> entries = diffs.entrySet();
+                Iterator<Entry<PropertyDescriptor, AttributeDiff<?>>> iter = entries.iterator();
+                while (iter.hasNext()) {
+                    Entry<PropertyDescriptor, AttributeDiff<?>> entry = iter.next();
+                    PropertyDescriptor pd = entry.getKey();
+                    AttributeDiff<?> ad = entry.getValue();
+                    String oldValue = ad.getNewValue() == null ? "[MISSING]" : ad.getNewValue()
+                            .toString();
+                    String newValue = ad.getOldValue() == null ? "[MISSING]" : ad.getOldValue()
+                            .toString();
+                    ansi.fg(ad.getOldValue() == null ? GREEN : (ad.getNewValue() == null ? RED
+                            : YELLOW));
+                    ansi.a(pd.getName()).a("<").a(pd.getType().toString()).a(">: ").a(oldValue)
+                            .a(" ---> ").a(newValue);
+                    ansi.reset();
+                    ansi.newline();
+                }
+                console.println(ansi.toString());
+            }
+
         }
     }
 
