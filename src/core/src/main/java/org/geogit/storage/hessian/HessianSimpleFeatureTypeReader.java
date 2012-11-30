@@ -82,7 +82,7 @@ public class HessianSimpleFeatureTypeReader implements ObjectReader<RevFeatureTy
 
             builder.setName(new NameImpl("".equals(typeNamespace) ? null : typeNamespace, typeName));
             SimpleFeatureType type = builder.buildFeatureType();
-            return new RevFeatureType(type);
+            return new RevFeatureType(id, type);
         } catch (Exception e) {
             throw Throwables.propagate(e);
         } finally {
