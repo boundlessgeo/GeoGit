@@ -22,13 +22,13 @@ import jline.UnsupportedTerminal;
 import jline.console.ConsoleReader;
 
 import org.geogit.api.GeoGIT;
-import org.geogit.api.NodeRef;
+import org.geogit.api.GlobalInjectorBuilder;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
+import org.geogit.api.Platform;
 import org.geogit.api.porcelain.AddOp;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.di.GeogitModule;
 import org.geogit.repository.WorkingTree;
-import org.geogit.storage.bdbje.JEStorageModule;
 import org.geotools.data.DataUtilities;
 import org.geotools.feature.NameImpl;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
@@ -42,9 +42,7 @@ import org.opengis.feature.type.Name;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
-import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.google.inject.util.Modules;
 import com.vividsolutions.jts.io.ParseException;
 
 public abstract class AbstractGeogitFunctionalTest {
@@ -106,17 +104,19 @@ public abstract class AbstractGeogitFunctionalTest {
         stdIn = new ByteArrayInputStream(new byte[0]);
         stdOut = new ByteArrayOutputStream();
 
-        TestPlatform platform = new TestPlatform(currentDirectory, homeDirectory);
-
         ConsoleReader consoleReader = new ConsoleReader(stdIn, stdOut, new UnsupportedTerminal());
 
-        Injector injector = Guice.createInjector(Modules.override(new GeogitModule()).with(
-                new JEStorageModule(), new TestModule(platform)));
+        GlobalInjectorBuilder.builder = new CLITestInjectorBuilder(currentDirectory, homeDirectory);
+        Injector injector = GlobalInjectorBuilder.builder.get();
+
+        if (geogit != null) {
+            geogit.close();
+        }
 
         geogit = new GeoGIT(injector, currentDirectory);
         try {
             geogitCLI = new GeogitCLI(consoleReader);
-            geogitCLI.setPlatform(platform);
+            geogitCLI.setPlatform(injector.getInstance(Platform.class));
             geogitCLI.setGeogitInjector(injector);
             if (geogit.getRepository() != null) {
                 geogitCLI.setGeogit(geogit);
@@ -220,7 +220,7 @@ public abstract class AbstractGeogitFunctionalTest {
         final WorkingTree workTree = geogit.getRepository().getWorkingTree();
         Name name = f.getType().getName();
         String parentPath = name.getLocalPart();
-        NodeRef ref = workTree.insert(parentPath, f);
+        Node ref = workTree.insert(parentPath, f);
         ObjectId objectId = ref.getObjectId();
         return objectId;
     }

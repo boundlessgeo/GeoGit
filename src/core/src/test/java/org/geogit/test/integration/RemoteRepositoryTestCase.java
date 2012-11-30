@@ -22,7 +22,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.geogit.api.GeoGIT;
 import org.geogit.api.InjectorBuilder;
-import org.geogit.api.NodeRef;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Platform;
 import org.geogit.api.Remote;
@@ -134,7 +134,7 @@ public abstract class RemoteRepositoryTestCase {
 
             geogit = new GeoGIT(injector, envHome);
             repo = geogit.getOrCreateRepository();
-            repo.setInjectorBuilder(injectorBuilder);
+
             repo.command(ConfigOp.class).setAction(ConfigAction.CONFIG_SET).setName("user.name")
                     .setValue("Gabriel Roldan").call();
             repo.command(ConfigOp.class).setAction(ConfigAction.CONFIG_SET).setName("user.email")
@@ -343,7 +343,7 @@ public abstract class RemoteRepositoryTestCase {
         final WorkingTree workTree = geogit.getRepository().getWorkingTree();
         Name name = f.getType().getName();
         String parentPath = name.getLocalPart();
-        NodeRef ref = workTree.insert(parentPath, f);
+        Node ref = workTree.insert(parentPath, f);
         ObjectId objectId = ref.getObjectId();
         return objectId;
     }

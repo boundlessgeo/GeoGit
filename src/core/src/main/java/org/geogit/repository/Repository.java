@@ -11,7 +11,7 @@ import java.util.Map;
 
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.InjectorBuilder;
-import org.geogit.api.NodeRef;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
@@ -110,20 +110,6 @@ public class Repository {
      */
     public StagingArea getIndex() {
         return index;
-    }
-
-    /**
-     * @return the {@link InjectorBuilder} for this repository
-     */
-    public InjectorBuilder getInjectorBuilder() {
-        return injectorBuilder;
-    }
-
-    /**
-     * @param injectorBuilder the {@link InjectorBuilder} for this repository
-     */
-    public void setInjectorBuilder(InjectorBuilder injectorBuilder) {
-        this.injectorBuilder = injectorBuilder;
     }
 
     /**
@@ -361,10 +347,10 @@ public class Repository {
 
     /**
      * @param path the path to search for
-     * @return an {@link Optional} of the {@link NodeRef} for the child, or
-     *         {@link Optional#absent()} if it wasn't found
+     * @return an {@link Optional} of the {@link Node} for the child, or {@link Optional#absent()}
+     *         if it wasn't found
      */
-    public Optional<NodeRef> getRootTreeChild(String path) {
+    public Optional<Node> getRootTreeChild(String path) {
         return command(FindTreeChild.class).setChildPath(path).call();
     }
 
@@ -373,10 +359,10 @@ public class Repository {
      * 
      * @param tree the tree to search
      * @param childPath the path to search for
-     * @return an {@link Optional} of the {@link NodeRef} for the child path, or
+     * @return an {@link Optional} of the {@link Node} for the child path, or
      *         {@link Optional#absent()} if it wasn't found
      */
-    public Optional<NodeRef> getTreeChild(RevTree tree, String childPath) {
+    public Optional<Node> getTreeChild(RevTree tree, String childPath) {
         return command(FindTreeChild.class).setParent(tree).setChildPath(childPath).call();
     }
 

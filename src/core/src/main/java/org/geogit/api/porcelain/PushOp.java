@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.GlobalInjectorBuilder;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.api.SymRef;
@@ -27,6 +28,8 @@ import com.google.inject.Inject;
 
 /**
  * Update remote refs along with associated objects.
+ * 
+ * @author jgarrett
  */
 public class PushOp extends AbstractGeoGitOp<Void> {
 
@@ -101,60 +104,112 @@ public class PushOp extends AbstractGeoGitOp<Void> {
 
         Preconditions.checkArgument(pushRemote.isPresent(), "Remote could not be resolved.");
 
-        if (refSpecs.size() > 0) {
-            throw new UnsupportedOperationException("Pull does not currently handle ref specs.");
-        } else {
-            List<Ref> refsToPush = new ArrayList<Ref>();
-            if (all) {
-                Predicate<Ref> filter = new Predicate<Ref>() {
-                    final String prefix = Ref.HEADS_PREFIX;
+        Optional<IRemoteRepo> remoteRepo = getRemoteRepo(pushRemote.get());
 
-                    @Override
-                    public boolean apply(Ref input) {
-                        return input.getName().startsWith(prefix);
+        Preconditions.checkState(remoteRepo.isPresent(), "Failed to connect to the remote.");
+
+        try {
+            remoteRepo.get().open();
+        } catch (IOException e) {
+            Throwables.propagate(e);
+        }
+
+        try {
+            if (refSpecs.size() > 0) {
+                for (String refspec : refSpecs) {
+                    String[] refs = refspec.split(":");
+                    if (refs.length == 0) {
+                        refs = new String[2];
+                        refs[0] = "";
+                        refs[1] = "";
                     }
-                };
-                refsToPush.addAll(command(ForEachRef.class).setFilter(filter).call());
+                    Preconditions.checkArgument(refs.length < 3,
+                            "Invalid refspec, please use [+][<localref>][:][<remoteref>].");
+
+                    boolean force = refspec.startsWith("+");
+                    String localrefspec = refs[0].substring(force ? 1 : 0);
+
+                    String remoterefspec = (refs.length == 2 ? refs[1] : localrefspec);
+
+                    if (localrefspec.equals("")) {
+                        if (!remoterefspec.equals("")) {
+                            // delete the remote branch matching remoteref
+                            remoteRepo.get().deleteRef(localRepository, remoterefspec);
+                        } else {
+                            // push current branch
+                            final Optional<Ref> currHead = command(RefParse.class)
+                                    .setName(Ref.HEAD).call();
+                            Preconditions.checkState(currHead.isPresent(),
+                                    "Repository has no HEAD, can't push.");
+                            Preconditions.checkState(currHead.get() instanceof SymRef,
+                                    "Can't push from detached HEAD");
+                            final SymRef headRef = (SymRef) currHead.get();
+                            final Optional<Ref> targetRef = command(RefParse.class).setName(
+                                    headRef.getTarget()).call();
+                            Preconditions.checkState(targetRef.isPresent());
+
+                            remoteRepo.get().pushNewData(localRepository, targetRef.get());
+                        }
+                    } else {
+                        Optional<Ref> localRef = command(RefParse.class).setName(localrefspec)
+                                .call();
+                        Preconditions.checkArgument(localRef.isPresent(),
+                                "Local ref could not be resolved.");
+                        // push the localref branch to the remoteref branch
+                        remoteRepo.get()
+                                .pushNewData(localRepository, localRef.get(), remoterefspec);
+                    }
+
+                }
             } else {
-                // push current branch
-                final Optional<Ref> currHead = command(RefParse.class).setName(Ref.HEAD).call();
-                Preconditions.checkState(currHead.isPresent(),
-                        "Repository has no HEAD, can't push.");
-                Preconditions.checkState(currHead.get() instanceof SymRef,
-                        "Can't push from detached HEAD");
-                final SymRef headRef = (SymRef) currHead.get();
-                final Optional<Ref> targetRef = command(RefParse.class)
-                        .setName(headRef.getTarget()).call();
-                Preconditions.checkState(targetRef.isPresent());
-                refsToPush.add(targetRef.get());
+                List<Ref> refsToPush = new ArrayList<Ref>();
+                if (all) {
+                    Predicate<Ref> filter = new Predicate<Ref>() {
+                        final String prefix = Ref.HEADS_PREFIX;
+
+                        @Override
+                        public boolean apply(Ref input) {
+                            return input.getName().startsWith(prefix);
+                        }
+                    };
+                    refsToPush.addAll(command(ForEachRef.class).setFilter(filter).call());
+                } else {
+                    // push current branch
+                    final Optional<Ref> currHead = command(RefParse.class).setName(Ref.HEAD).call();
+                    Preconditions.checkState(currHead.isPresent(),
+                            "Repository has no HEAD, can't push.");
+                    Preconditions.checkState(currHead.get() instanceof SymRef,
+                            "Can't push from detached HEAD");
+                    final SymRef headRef = (SymRef) currHead.get();
+                    final Optional<Ref> targetRef = command(RefParse.class).setName(
+                            headRef.getTarget()).call();
+                    Preconditions.checkState(targetRef.isPresent());
+                    refsToPush.add(targetRef.get());
+                }
+
+                for (Ref ref : refsToPush) {
+                    remoteRepo.get().pushNewData(localRepository, ref);
+                }
             }
 
-            Optional<IRemoteRepo> remoteRepo = getRemoteRepo(pushRemote.get());
-
-            Preconditions.checkState(remoteRepo.isPresent(), "Failed to connect to the remote.");
-
-            try {
-                remoteRepo.get().open();
-            } catch (IOException e) {
-                Throwables.propagate(e);
-            }
-
-            for (Ref ref : refsToPush) {
-                remoteRepo.get().pushNewData(localRepository, ref);
-            }
-
+        } catch (Exception e) {
+            Throwables.propagate(e);
+        } finally {
             try {
                 remoteRepo.get().close();
             } catch (IOException e) {
                 Throwables.propagate(e);
             }
-
         }
 
         return null;
     }
 
+    /**
+     * @param remote the remote to get
+     * @return an interface for the remote repository
+     */
     public Optional<IRemoteRepo> getRemoteRepo(Remote remote) {
-        return RemoteUtils.newRemote(localRepository.getInjectorBuilder().get(), remote);
+        return RemoteUtils.newRemote(GlobalInjectorBuilder.builder.get(), remote);
     }
 }

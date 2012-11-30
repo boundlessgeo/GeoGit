@@ -26,6 +26,7 @@ import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.repository.Repository;
 import org.geogit.repository.StagingArea;
 import org.geogit.storage.ObjectInserter;
+import org.opengis.util.ProgressListener;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -106,18 +107,40 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
 
         Preconditions.checkState(upstream != null, "No upstream target has been specified.");
 
-        Preconditions.checkState(!ObjectId.NULL.equals(headRef.getObjectId()),
-                "HEAD did not resolve to a commit.");
         Preconditions.checkState(!ObjectId.NULL.equals(upstream.get()),
                 "Upstream did not resolve to a commit.");
+
+        getProgressListener().started();
+
+        if (ObjectId.NULL.equals(headRef.getObjectId())) {
+            // Fast-forward
+            command(UpdateRef.class).setName(currentBranch).setNewValue(upstream.get()).call();
+            command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(currentBranch).call();
+
+            repository.getWorkingTree().updateWorkHead(upstream.get());
+            repository.getIndex().updateStageHead(upstream.get());
+            getProgressListener().complete();
+            return true;
+        }
 
         final RevCommit headCommit = repository.getCommit(headRef.getObjectId());
         final RevCommit targetCommit = repository.getCommit(upstream.get());
 
         Optional<RevCommit> ancestorCommit = command(FindCommonAncestor.class).setLeft(headCommit)
-                .setRight(targetCommit).call();
+                .setRight(targetCommit).setProgressListener(subProgress(10.f)).call();
 
         Preconditions.checkState(ancestorCommit.isPresent(), "No ancestor commit could be found.");
+
+        if (ancestorCommit.get().getId().equals(headCommit.getId())) {
+            // Fast-forward
+            command(UpdateRef.class).setName(currentBranch).setNewValue(upstream.get()).call();
+            command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(currentBranch).call();
+
+            repository.getWorkingTree().updateWorkHead(upstream.get());
+            repository.getIndex().updateStageHead(upstream.get());
+            getProgressListener().complete();
+            return true;
+        }
 
         // Get all commits between the head commit and the ancestor.
         Iterator<RevCommit> commitIterator = command(LogOp.class).call();
@@ -137,6 +160,10 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
         command(CheckoutOp.class).setSource(onto.get().toString()).call();
 
         ObjectId rebaseHead = onto.get();
+
+        ProgressListener subProgress = subProgress(90.f);
+
+        int numCommits = commitsToRebase.size() - 1;
 
         for (int i = commitsToRebase.size() - 2; i >= 0; i--) {
             // get changes
@@ -166,7 +193,12 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
             repository.getWorkingTree().updateWorkHead(newTreeId);
             repository.getIndex().updateStageHead(newTreeId);
 
+            subProgress.progress((numCommits - i) * 100.f / numCommits);
+
         }
+        subProgress.complete();
+
+        getProgressListener().complete();
 
         return true;
     }

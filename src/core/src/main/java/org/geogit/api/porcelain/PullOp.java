@@ -8,10 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.api.SymRef;
 import org.geogit.api.plumbing.RefParse;
+import org.geogit.api.plumbing.UpdateRef;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -21,6 +23,8 @@ import com.google.inject.Inject;
 
 /**
  * Incorporates changes from a remote repository into the current branch.
+ * 
+ * @author jgarrett
  */
 public class PullOp extends AbstractGeoGitOp<Void> {
 
@@ -101,13 +105,12 @@ public class PullOp extends AbstractGeoGitOp<Void> {
         Optional<Remote> remoteRepo = remote.get();
 
         Preconditions.checkArgument(remoteRepo.isPresent(), "Remote could not be resolved.");
+        getProgressListener().started();
 
-        command(FetchOp.class).addRemote(remote).setAll(all).call();
+        command(FetchOp.class).addRemote(remote).setAll(all).setProgressListener(subProgress(80.f))
+                .call();
 
-        if (refSpecs.size() > 0) {
-            throw new UnsupportedOperationException("Pull does not currently handle ref specs.");
-        } else {
-
+        if (refSpecs.size() == 0) {
             // pull current branch
             final Optional<Ref> currHead = command(RefParse.class).setName(Ref.HEAD).call();
             Preconditions.checkState(currHead.isPresent(), "Repository has no HEAD, can't pull.");
@@ -116,23 +119,68 @@ public class PullOp extends AbstractGeoGitOp<Void> {
             final SymRef headRef = (SymRef) currHead.get();
             final String currentBranch = Ref.localName(headRef.getTarget());
 
-            String remoteBranch = Ref.REMOTES_PREFIX + remoteRepo.get().getName() + "/"
-                    + currentBranch;
+            refSpecs.add(currentBranch + ":" + currentBranch);
+        }
 
-            Optional<Ref> upstream = command(RefParse.class).setName(remoteBranch).call();
+        for (String refspec : refSpecs) {
+            String[] refs = refspec.split(":");
+            Preconditions.checkArgument(refs.length < 3,
+                    "Invalid refspec, please use [+]<remoteref>[:<localref>].");
 
-            Preconditions.checkState(upstream.isPresent(),
-                    "Cannot pull into current branch, no common ancestor was found.");
+            boolean force = refspec.startsWith("+");
+            String remoteref = refs[0].substring(force ? 1 : 0);
+            Optional<Ref> sourceRef = findRemoteRef(remoteref);
+            Preconditions.checkState(sourceRef.isPresent(),
+                    "The remote reference could not be found.");
 
+            String destinationref = "";
+            if (refs.length == 2) {
+                destinationref = refs[1];
+            } else {
+                // pull into current branch
+                final Optional<Ref> currHead = command(RefParse.class).setName(Ref.HEAD).call();
+                Preconditions.checkState(currHead.isPresent(),
+                        "Repository has no HEAD, can't pull.");
+                Preconditions.checkState(currHead.get() instanceof SymRef,
+                        "Can't pull from detached HEAD");
+                final SymRef headRef = (SymRef) currHead.get();
+                destinationref = headRef.getTarget();
+            }
+
+            Optional<Ref> destRef = command(RefParse.class).setName(destinationref).call();
             if (rebase) {
-                command(RebaseOp.class).setUpstream(
-                        Suppliers.ofInstance(upstream.get().getObjectId())).call();
+                if (destRef.isPresent()) {
+                    if (destRef.get().getObjectId().equals(ObjectId.NULL)) {
+                        command(UpdateRef.class).setName(destRef.get().getName())
+                                .setNewValue(sourceRef.get().getObjectId()).call();
+                    } else {
+                        command(CheckoutOp.class).setSource(destinationref).call();
+                        command(RebaseOp.class).setUpstream(
+                                Suppliers.ofInstance(sourceRef.get().getObjectId())).call();
+                    }
+                } else {
+                    command(BranchCreateOp.class).setAutoCheckout(true).setName(destinationref)
+                            .setSource(sourceRef.get().getObjectId().toString()).call();
+                }
+
             } else {
                 throw new UnsupportedOperationException("Merge pull is current unsupported.");
             }
 
         }
 
+        getProgressListener().complete();
+
         return null;
+    }
+
+    /**
+     * @param ref the ref to find
+     * @return an {@link Optional} of the ref, or {@link Optional#absent()} if it wasn't found
+     */
+    public Optional<Ref> findRemoteRef(String ref) {
+
+        String remoteRef = Ref.REMOTES_PREFIX + remote.get().get().getName() + "/" + ref;
+        return command(RefParse.class).setName(remoteRef).call();
     }
 }
