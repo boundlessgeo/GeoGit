@@ -46,8 +46,6 @@ import org.geogit.cli.AnsiDecorator;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
 import org.opengis.feature.type.PropertyDescriptor;
-import org.geogit.repository.Repository;
-import org.geogit.storage.StagingDatabase;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
@@ -212,8 +210,6 @@ public class Diff extends AbstractCommand implements CLICommand {
                 Map<PropertyDescriptor, AttributeDiff<?>> diffs = diff.getDiffs();
 
                 Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isAnsiSupported());
-
-            index.get(id, reader);
                 Set<Entry<PropertyDescriptor, AttributeDiff<?>>> entries = diffs.entrySet();
                 Iterator<Entry<PropertyDescriptor, AttributeDiff<?>>> iter = entries.iterator();
                 while (iter.hasNext()) {
@@ -233,8 +229,6 @@ public class Diff extends AbstractCommand implements CLICommand {
                 }
                 console.println(ansi.toString());
             }
-            ObjectId id = null;
-            index.get(id);
 
         }
     }

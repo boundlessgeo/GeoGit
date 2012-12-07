@@ -1,6 +1,7 @@
 package org.geogit.api.plumbing;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevFeature;
@@ -47,8 +48,8 @@ public class FeatureNodeRefFromRefspec extends AbstractGeoGitOp<NodeRef> {
         }
         Optional<RevObject> revObject = command(RevObjectParse.class).setRefSpec(fullRef).call(
                 RevObject.class);
-        DepthTreeIterator iter = new DepthTreeIterator((RevTree) revObject.get(), objectDb,
-                Strategy.CHILDREN);
+        DepthTreeIterator iter = new DepthTreeIterator(featureTypeRef, ObjectId.NULL,
+                (RevTree) revObject.get(), objectDb, Strategy.CHILDREN);
 
         while (iter.hasNext()) {
             NodeRef nodeRef = iter.next();
@@ -72,11 +73,11 @@ public class FeatureNodeRefFromRefspec extends AbstractGeoGitOp<NodeRef> {
 
         if (!revObject.isPresent()) { // let's try to see if it is a feature in the working tree
             NodeRef.checkValidPath(ref);
-            Optional<NodeRef> treeRef = command(FindTreeChild.class).setParent(workTree.getTree())
-                    .setChildPath(ref).call();
-            Preconditions.checkArgument(treeRef.isPresent(), "Invalid reference: %s", ref);
-            ObjectId treeId = treeRef.get().getObjectId();
-            revObject = command(RevObjectParse.class).setObjectId(treeId).call(RevObject.class);
+            Optional<NodeRef> elementRef = command(FindTreeChild.class)
+                    .setParent(workTree.getTree()).setChildPath(ref).call();
+            Preconditions.checkArgument(elementRef.isPresent(), "Invalid reference: %s", ref);
+            ObjectId id = elementRef.get().getNode().getObjectId();
+            revObject = command(RevObjectParse.class).setObjectId(id).call(RevObject.class);
         }
 
         if (revObject.isPresent()) {
@@ -92,18 +93,18 @@ public class FeatureNodeRefFromRefspec extends AbstractGeoGitOp<NodeRef> {
     public NodeRef call() {
 
         Optional<RevFeature> feature = getFeatureFromRefSpec();
-        
-        if (feature.isPresent()){
+
+        if (feature.isPresent()) {
             RevFeatureType featureType = getFeatureTypeFromRefSpec();
             RevFeature feat = feature.get();
-            return new NodeRef(NodeRef.nodeFromPath(ref), feat.getId(), featureType.getId(),
-                    TYPE.FEATURE);
+            return new NodeRef(new Node(NodeRef.nodeFromPath(ref), feat.getId(),
+                    featureType.getId(), TYPE.FEATURE), NodeRef.parentPath(ref),
+                    featureType.getId());
 
+        } else {
+            return new NodeRef(new Node("", ObjectId.NULL, ObjectId.NULL, TYPE.FEATURE), "",
+                    ObjectId.NULL);
         }
-        else{
-            return new NodeRef("",ObjectId.NULL, ObjectId.NULL, TYPE.FEATURE);
-        }
-        
 
     }
 
