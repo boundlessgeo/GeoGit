@@ -10,21 +10,21 @@ import static org.geogit.api.NodeRef.PATH_SEPARATOR;
 
 import java.util.List;
 
+import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevTree;
-import org.geogit.storage.NodeRefPathStorageOrder;
+import org.geogit.storage.NodePathStorageOrder;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectSerialisingFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedMap;
 
 /**
- * Searches for a {@link NodeRef} within a particular tree.
+ * Searches for a {@link Node} within a particular tree.
  * 
- * @see NodeRef
+ * @see Node
  * @see RevTree
  * @see ObjectDatabase
  */
@@ -32,31 +32,27 @@ public class DepthSearch {
 
     private final ObjectDatabase objectDb;
 
-    private ObjectSerialisingFactory serialFactory;
-
-    private NodeRefPathStorageOrder refOrder = new NodeRefPathStorageOrder();
+    private NodePathStorageOrder refOrder = new NodePathStorageOrder();
 
     /**
      * Constructs a new {@code DepthSearch} with the given parameters.
      * 
-     * @param db the object database where {@link NodeRef}s and {@link RevTree}s are stored
-     * @param serialFactory the serialization factor
+     * @param db the object database where {@link Node}s and {@link RevTree}s are stored
      */
-    public DepthSearch(final ObjectDatabase db, ObjectSerialisingFactory serialFactory) {
+    public DepthSearch(final ObjectDatabase db) {
         this.objectDb = db;
-        this.serialFactory = serialFactory;
     }
 
     /**
-     * Searches for a {@link NodeRef} in the given tree.
+     * Searches for a {@link Node} in the given tree.
      * 
      * @param rootTreeId the tree to search
-     * @param path the path to the {@code NodeRef} to search for
-     * @return an {@link Optional} of the {@code NodeRef} if it was found, or
-     *         {@link Optional#absent()} if it wasn't found.
+     * @param path the path to the {@code Node} to search for
+     * @return an {@link Optional} of the {@code Node} if it was found, or {@link Optional#absent()}
+     *         if it wasn't found.
      */
     public Optional<NodeRef> find(final ObjectId rootTreeId, final String path) {
-        RevTree tree = objectDb.get(rootTreeId, serialFactory.createRevTreeReader());
+        RevTree tree = objectDb.get(rootTreeId, RevTree.class);
         if (tree == null) {
             return null;
         }
@@ -64,12 +60,12 @@ public class DepthSearch {
     }
 
     /**
-     * Searches for a {@link NodeRef} in the given tree.
+     * Searches for a {@link Node} in the given tree.
      * 
      * @param rootTree the tree to search
-     * @param childPath the path to the {@code NodeRef} to search for
-     * @return an {@link Optional} of the {@code NodeRef} if it was found, or
-     *         {@link Optional#absent()} if it wasn't found.
+     * @param childPath the path to the {@code Node} to search for
+     * @return an {@link Optional} of the {@code Node} if it was found, or {@link Optional#absent()}
+     *         if it wasn't found.
      */
     public Optional<NodeRef> find(final RevTree rootTree, final String childPath) {
         return find(rootTree, "", childPath);
@@ -81,7 +77,7 @@ public class DepthSearch {
      * @param parent the tree to search
      * @param parentPath the path of the parent tree
      * @param childPath the path to search for
-     * @return an {@link Optional} of the {@code NodeRef} if the child path was found, or
+     * @return an {@link Optional} of the {@code Node} if the child path was found, or
      *         {@link Optional#absent()} if it wasn't found.
      */
     public Optional<NodeRef> find(final RevTree parent, final String parentPath,
@@ -100,27 +96,28 @@ public class DepthSearch {
         final List<String> allPaths = NodeRef.allPathsTo(childPath);
         final int nexChildIndex = allPaths.indexOf(parentPath) + 1;
         final String directChildPath = allPaths.get(nexChildIndex);
+        String directChildName = NodeRef.nodeFromPath(directChildPath);
 
-        final Optional<NodeRef> childTreeRef = getDirectChild(parent, directChildPath, 0);
+        final Optional<Node> childTreeRef = getDirectChild(parent, directChildName, 0);
 
         if (!childTreeRef.isPresent()) {
-            return childTreeRef;
+            return Optional.absent();
         }
         if (directChildPath.equals(childPath)) {
             // found it!
-            return childTreeRef;
+            return Optional.of(new NodeRef(childTreeRef.get(), NodeRef.parentPath(directChildPath),
+                    ObjectId.NULL));
         }
-        final RevTree childTree = objectDb.get(childTreeRef.get().getObjectId(),
-                serialFactory.createRevTreeReader());
+        final RevTree childTree = objectDb.get(childTreeRef.get().getObjectId(), RevTree.class);
         return find(childTree, directChildPath, childPath);
     }
 
     /**
      * @param parent
-     * @param directChildPath
+     * @param directChildName
      * @return
      */
-    public Optional<NodeRef> getDirectChild(RevTree parent, String directChildPath,
+    public Optional<Node> getDirectChild(RevTree parent, String directChildName,
             final int subtreesDepth) {
         if (parent.isEmpty()) {
             return Optional.absent();
@@ -128,17 +125,17 @@ public class DepthSearch {
 
         if (parent.trees().isPresent() || parent.features().isPresent()) {
             if (parent.trees().isPresent()) {
-                ImmutableList<NodeRef> refs = parent.trees().get();
+                ImmutableList<Node> refs = parent.trees().get();
                 for (int i = 0; i < refs.size(); i++) {
-                    if (directChildPath.equals(refs.get(i).getPath())) {
+                    if (directChildName.equals(refs.get(i).getName())) {
                         return Optional.of(refs.get(i));
                     }
                 }
             }
             if (parent.features().isPresent()) {
-                ImmutableList<NodeRef> refs = parent.features().get();
+                ImmutableList<Node> refs = parent.features().get();
                 for (int i = 0; i < refs.size(); i++) {
-                    if (directChildPath.equals(refs.get(i).getPath())) {
+                    if (directChildName.equals(refs.get(i).getName())) {
                         return Optional.of(refs.get(i));
                     }
                 }
@@ -146,13 +143,13 @@ public class DepthSearch {
             return Optional.absent();
         }
 
-        Integer bucket = refOrder.bucket(directChildPath, subtreesDepth);
+        Integer bucket = refOrder.bucket(directChildName, subtreesDepth);
         ImmutableSortedMap<Integer, ObjectId> buckets = parent.buckets().get();
         ObjectId subtreeId = buckets.get(bucket);
         if (subtreeId == null) {
             return Optional.absent();
         }
-        RevTree subtree = objectDb.get(subtreeId, serialFactory.createRevTreeReader());
-        return getDirectChild(subtree, directChildPath, subtreesDepth + 1);
+        RevTree subtree = objectDb.get(subtreeId, RevTree.class);
+        return getDirectChild(subtree, directChildName, subtreesDepth + 1);
     }
 }

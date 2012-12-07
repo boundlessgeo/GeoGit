@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevObject.TYPE;
@@ -22,7 +23,6 @@ import org.geogit.api.plumbing.FindTreeChild;
 import org.geogit.api.plumbing.diff.DepthTreeIterator;
 import org.geogit.api.plumbing.diff.DepthTreeIterator.Strategy;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectSerialisingFactory;
 import org.junit.Test;
 
 import com.google.common.base.Optional;
@@ -33,12 +33,9 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
 
     private ObjectDatabase odb;
 
-    private ObjectSerialisingFactory serialFactory;
-
     @Override
     protected void setUpInternal() throws Exception {
         odb = repo.getObjectDatabase();
-        serialFactory = repo.getSerializationFactory();
     }
 
     @Test
@@ -60,15 +57,15 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
                 + Math.round(numEntries / (sw.elapsedMillis() / 1000D)) + "/s)");
 
         sw.reset().start();
-        final RevTree tree = odb.get(treeId, serialFactory.createRevTreeReader());
+        final RevTree tree = odb.getTree(treeId);
         sw.stop();
         System.err.println("Retrieved tree in " + sw);
 
         System.err.println("traversing with DepthTreeIterator...");
         sw.reset().start();
         int counted = 0;
-        for (DepthTreeIterator it = new DepthTreeIterator(tree, odb, Strategy.CHILDREN); it
-                .hasNext(); counted++) {
+        for (DepthTreeIterator it = new DepthTreeIterator("", ObjectId.NULL, tree, odb,
+                Strategy.CHILDREN); it.hasNext(); counted++) {
             NodeRef ref = it.next();
             if ((counted + 1) % (numEntries / 10) == 0) {
                 System.err.print("#" + (counted + 1));
@@ -83,8 +80,8 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
         System.err.println("traversing with DepthTreeIterator...");
         sw.reset().start();
         counted = 0;
-        for (DepthTreeIterator it = new DepthTreeIterator(tree, odb, Strategy.CHILDREN); it
-                .hasNext(); counted++) {
+        for (DepthTreeIterator it = new DepthTreeIterator("", ObjectId.NULL, tree, odb,
+                Strategy.CHILDREN); it.hasNext(); counted++) {
             NodeRef ref = it.next();
             if ((counted + 1) % (numEntries / 10) == 0) {
                 System.err.print("#" + (counted + 1));
@@ -111,12 +108,12 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
                 + Math.round(numEntries / (sw.elapsedMillis() / 1000D)) + "/s)");
 
         sw.reset().start();
-        final RevTree tree = odb.get(treeId, serialFactory.createRevTreeReader());
+        final RevTree tree = odb.getTree(treeId);
         sw.stop();
         System.err.println("Retrieved tree in " + sw);
 
         {
-            Map<Integer, NodeRef> randomEdits = Maps.newHashMap();
+            Map<Integer, Node> randomEdits = Maps.newHashMap();
             Random randGen = new Random();
             for (int i = 0; i < tree.size() / 2; i++) {
                 int random;
@@ -125,12 +122,12 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
                 }
                 String path = "Feature." + random;
                 ObjectId newid = ObjectId.forString(path + "changed");
-                NodeRef ref = new NodeRef(path, newid, ObjectId.NULL, TYPE.FEATURE);
+                Node ref = new Node(path, newid, ObjectId.NULL, TYPE.FEATURE);
                 randomEdits.put(random, ref);
             }
             RevTreeBuilder mutable = tree.builder(odb);
             sw.reset().start();
-            for (NodeRef ref : randomEdits.values()) {
+            for (Node ref : randomEdits.values()) {
                 mutable.put(ref);
             }
             mutable.build();
@@ -170,17 +167,18 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
     public void testRemove() throws Exception {
         final int numEntries = 1000;
         ObjectId treeId = createAndSaveTree(numEntries, true);
-        final RevTree tree = odb.get(treeId, serialFactory.createRevTreeReader());
+        final RevTree tree = odb.getTree(treeId);
 
         // collect some keys to remove
         final Set<String> removedKeys = new HashSet<String>();
         {
             int i = 0;
-            DepthTreeIterator it = new DepthTreeIterator(tree, odb, Strategy.CHILDREN);
+            DepthTreeIterator it = new DepthTreeIterator("", ObjectId.NULL, tree, odb,
+                    Strategy.CHILDREN);
             for (; it.hasNext(); i++) {
                 NodeRef entry = it.next();
                 if (i % 10 == 0) {
-                    removedKeys.add(entry.getPath());
+                    removedKeys.add(entry.path());
                 }
             }
             assertEquals(100, removedKeys.size());
@@ -204,17 +202,18 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
     public void testRemoveSplittedTree() throws Exception {
         final int numEntries = (int) (1.5 * RevTree.NORMALIZED_SIZE_LIMIT);
         final ObjectId treeId = createAndSaveTree(numEntries, true);
-        final RevTree tree = odb.get(treeId, serialFactory.createRevTreeReader());
+        final RevTree tree = odb.getTree(treeId);
 
         // collect some keys to remove
         final Set<String> removedKeys = new HashSet<String>();
         {
             int i = 0;
-            DepthTreeIterator it = new DepthTreeIterator(tree, odb, Strategy.CHILDREN);
+            DepthTreeIterator it = new DepthTreeIterator("", ObjectId.NULL, tree, odb,
+                    Strategy.CHILDREN);
             for (; it.hasNext(); i++) {
                 NodeRef entry = it.next();
                 if (i % 10 == 0) {
-                    removedKeys.add(entry.getPath());
+                    removedKeys.add(entry.path());
                 }
             }
             assertTrue(removedKeys.size() > 0);
@@ -264,12 +263,12 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
 
         RevTreeBuilder treeBuilder = createTree(numEntries, insertInAscendingKeyOrder);
         RevTree tree = treeBuilder.build();
-        odb.put(tree.getId(), serialFactory.createRevTreeWriter(tree));
+        odb.put(tree);
         return tree.getId();
     }
 
     private RevTreeBuilder createTree(final int numEntries, final boolean insertInAscendingKeyOrder) {
-        RevTreeBuilder tree = new RevTreeBuilder(odb, serialFactory);
+        RevTreeBuilder tree = new RevTreeBuilder(odb);
 
         final int increment = insertInAscendingKeyOrder ? 1 : -1;
         final int from = insertInAscendingKeyOrder ? 0 : numEntries - 1;
@@ -277,7 +276,7 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
 
         int c = 0;
         for (int i = from; i != breakAt; i += increment, c++) {
-            addNodeRef(tree, i);
+            addNode(tree, i);
             if ((c + 1) % (numEntries / 10) == 0) {
                 System.err.print("#" + (c + 1));
             } else if ((c + 1) % (numEntries / 100) == 0) {
@@ -290,12 +289,12 @@ public class RevTreeBuilderTest extends RepositoryTestCase {
 
     private static final ObjectId FAKE_ID = ObjectId.forString("fake");
 
-    private void addNodeRef(RevTreeBuilder tree, int i) {
+    private void addNode(RevTreeBuilder tree, int i) {
         String key = "Feature." + i;
         // ObjectId oid = ObjectId.forString(key);
         // ObjectId metadataId = ObjectId.forString("FeatureType");
-        // NodeRef ref = new NodeRef(key, oid, metadataId, TYPE.FEATURE);
-        NodeRef ref = new NodeRef(key, FAKE_ID, FAKE_ID, TYPE.FEATURE);
+        // Node ref = new Node(key, oid, metadataId, TYPE.FEATURE);
+        Node ref = new Node(key, FAKE_ID, FAKE_ID, TYPE.FEATURE);
         tree.put(ref);
     }
 }

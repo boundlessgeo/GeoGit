@@ -12,14 +12,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.geogit.api.NodeRef;
+import org.geogit.api.CommitBuilder;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
-import org.geogit.api.RevPerson;
 import org.geogit.api.RevTree;
 import org.geogit.api.plumbing.FindTreeChild;
-import org.geogit.api.plumbing.HashObject;
 import org.geogit.api.plumbing.RevObjectParse;
 import org.geogit.api.plumbing.UpdateRef;
 import org.geogit.api.plumbing.WriteTree;
@@ -103,10 +102,12 @@ public class IndexTest extends RepositoryTestCase {
         // simulate a commit so the repo head points to this new tree
         ObjectInserter objectInserter = repo.newObjectInserter();
         List<ObjectId> parents = ImmutableList.of();
-        RevCommit commit = new RevCommit(ObjectId.NULL, newRootTreeId, parents, new RevPerson(null,
-                null), new RevPerson(null, null), null, 0);
-        ObjectId commitId = geogit.command(HashObject.class).setObject(commit).call();
-        objectInserter.insert(commitId, getRepository().newCommitWriter(commit));
+
+        RevCommit commit = new CommitBuilder().setTreeId(newRootTreeId).setParentIds(parents)
+                .build();
+        ObjectId commitId = commit.getId();
+
+        objectInserter.insert(commit);
         Optional<Ref> newHead = geogit.command(UpdateRef.class).setName("refs/heads/master")
                 .setNewValue(commitId).call();
         assertTrue(newHead.isPresent());
@@ -229,7 +230,7 @@ public class IndexTest extends RepositoryTestCase {
         // staged2.accept(new PrintVisitor(index.getDatabase(), new PrintWriter(System.err)));
 
         // check feature1_2, feature1_3 and feature2_1
-        Optional<NodeRef> treeChild;
+        Optional<Node> treeChild;
 
         assertNotNull(treeChild = index.findStaged(appendChild(pointsName, idP2)));
         assertTrue(treeChild.isPresent());
@@ -298,10 +299,11 @@ public class IndexTest extends RepositoryTestCase {
         {// simulate a commit so the repo head points to this new tree
             ObjectInserter objectInserter = repo.newObjectInserter();
             List<ObjectId> parents = ImmutableList.of();
-            RevCommit commit = new RevCommit(ObjectId.NULL, newRepoTreeId1, parents, new RevPerson(
-                    null, null), new RevPerson(null, null), null, 0);
-            ObjectId commitId = geogit.command(HashObject.class).setObject(commit).call();
-            objectInserter.insert(commitId, getRepository().newCommitWriter(commit));
+
+            RevCommit commit = new CommitBuilder().setTreeId(newRepoTreeId1).setParentIds(parents)
+                    .build();
+            ObjectId commitId = commit.getId();
+            objectInserter.insert(commit);
             Optional<Ref> newHead = geogit.command(UpdateRef.class).setName("refs/heads/master")
                     .setNewValue(commitId).call();
             assertTrue(newHead.isPresent());
@@ -320,7 +322,7 @@ public class IndexTest extends RepositoryTestCase {
             RevTree newRepoTree = repo.getTree(newRepoTreeId2);
 
             // check feature1_2, feature1_2 and feature2_1
-            Optional<NodeRef> treeChild;
+            Optional<Node> treeChild;
             assertNotNull(treeChild = repo.getTreeChild(newRepoTree, appendChild(pointsName, idP2)));
             assertEquals(oId1_2, treeChild.get().getObjectId());
 
@@ -338,10 +340,11 @@ public class IndexTest extends RepositoryTestCase {
         {// simulate a commit so the repo head points to this new tree
             ObjectInserter objectInserter = repo.newObjectInserter();
             List<ObjectId> parents = ImmutableList.of();
-            RevCommit commit = new RevCommit(ObjectId.NULL, newRepoTreeId2, parents, new RevPerson(
-                    null, null), new RevPerson(null, null), null, 0);
-            ObjectId commitId = geogit.command(HashObject.class).setObject(commit).call();
-            objectInserter.insert(commitId, getRepository().newCommitWriter(commit));
+            RevCommit commit = new CommitBuilder().setTreeId(newRepoTreeId2).setParentIds(parents)
+                    .build();
+            ObjectId commitId = commit.getId();
+
+            objectInserter.insert(commit);
             Optional<Ref> newHead = geogit.command(UpdateRef.class).setName("refs/heads/master")
                     .setNewValue(commitId).call();
             assertTrue(newHead.isPresent());

@@ -11,14 +11,12 @@ import java.io.InputStream;
 import java.util.Iterator;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.NodeRef;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
 import org.geogit.repository.StagingArea;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectSerialisingFactory;
-import org.geogit.storage.RawObjectWriter;
 import org.geogit.storage.StagingDatabase;
 
 import com.google.common.base.Supplier;
@@ -39,23 +37,18 @@ public class DeepMove extends AbstractGeoGitOp<ObjectId> {
 
     private StagingDatabase index;
 
-    private Supplier<NodeRef> objectRef;
-
-    private ObjectSerialisingFactory serialFactory;
+    private Supplier<Node> objectRef;
 
     /**
      * Constructs a new instance of the {@code DeepMove} operation with the specified parameters.
      * 
      * @param odb the repository object database
      * @param index the staging database
-     * @param serialFactory the serialization factory
      */
     @Inject
-    public DeepMove(ObjectDatabase odb, StagingDatabase index,
-            ObjectSerialisingFactory serialFactory) {
+    public DeepMove(ObjectDatabase odb, StagingDatabase index) {
         this.odb = odb;
         this.index = index;
-        this.serialFactory = serialFactory;
     }
 
     /**
@@ -72,13 +65,13 @@ public class DeepMove extends AbstractGeoGitOp<ObjectId> {
      * @param objectRef the object to move from the origin database to the destination one
      * @return {@code this}
      */
-    public DeepMove setObjectRef(Supplier<NodeRef> objectRef) {
+    public DeepMove setObjectRef(Supplier<Node> objectRef) {
         this.objectRef = objectRef;
         return this;
     }
 
     /**
-     * Executes a deep move using the supplied {@link NodeRef}.
+     * Executes a deep move using the supplied {@link Node}.
      * 
      * @return the {@link ObjectId} of the moved object
      */
@@ -86,7 +79,7 @@ public class DeepMove extends AbstractGeoGitOp<ObjectId> {
     public ObjectId call() {
         ObjectDatabase from = toIndex ? odb : index;
         ObjectDatabase to = toIndex ? index : odb;
-        NodeRef ref = objectRef.get();
+        Node ref = objectRef.get();
         deepMove(ref, from, to);
         return null;
     }
@@ -99,36 +92,35 @@ public class DeepMove extends AbstractGeoGitOp<ObjectId> {
      * @param repositoryObjectInserter
      * @throws Exception
      */
-    private void deepMove(final NodeRef objectRef, final ObjectDatabase from,
-            final ObjectDatabase to) {
+    private void deepMove(final Node objectRef, final ObjectDatabase from, final ObjectDatabase to) {
 
         final ObjectId objectId = objectRef.getObjectId();
         if (TYPE.TREE.equals(objectRef.getType())) {
-            RevTree tree = from.get(objectId, serialFactory.createRevTreeReader());
+            RevTree tree = from.getTree(objectId);
             moveTree(tree, from, to);
         } else {
             moveFeature(objectRef, from, to);
         }
     }
 
-    private void moveFeature(NodeRef objectRef, ObjectDatabase from, ObjectDatabase to) {
+    private void moveFeature(Node objectRef, ObjectDatabase from, ObjectDatabase to) {
         moveObject(objectRef.getObjectId(), from, to, true);
 
-        final ObjectId metadataId = objectRef.getMetadataId();
+        final ObjectId metadataId = objectRef.getMetadataId().or(ObjectId.NULL);
         if (!metadataId.isNull()) {
             moveObject(metadataId, from, to, false);
         }
     }
 
     private void moveTree(RevTree tree, ObjectDatabase from, ObjectDatabase to) {
-        Iterator<NodeRef> children = tree.children();
+        Iterator<Node> children = tree.children();
         while (children.hasNext()) {
-            NodeRef ref = children.next();
+            Node ref = children.next();
             deepMove(ref, from, to);
         }
         if (tree.buckets().isPresent()) {
             for (ObjectId bucketId : tree.buckets().get().values()) {
-                RevTree bucketTree = from.get(bucketId, serialFactory.createRevTreeReader());
+                RevTree bucketTree = from.getTree(bucketId);
                 moveTree(bucketTree, from, to);
             }
         }
@@ -145,7 +137,7 @@ public class DeepMove extends AbstractGeoGitOp<ObjectId> {
 
         final InputStream raw = from.getRaw(objectId);
         try {
-            to.put(objectId, new RawObjectWriter(raw));
+            to.put(objectId, raw);
             from.delete(objectId);
 
             checkState(to.exists(objectId));

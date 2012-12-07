@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.GlobalInjectorBuilder;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.api.SymRef;
@@ -18,6 +19,7 @@ import org.geogit.api.plumbing.UpdateSymRef;
 import org.geogit.remote.IRemoteRepo;
 import org.geogit.remote.RemoteUtils;
 import org.geogit.repository.Repository;
+import org.opengis.util.ProgressListener;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -31,6 +33,7 @@ import com.google.inject.Inject;
 /**
  * Fetches named heads or tags from one or more other repositories, along with the objects necessary
  * to complete them.
+ * 
  */
 public class FetchOp extends AbstractGeoGitOp<Void> {
 
@@ -70,7 +73,7 @@ public class FetchOp extends AbstractGeoGitOp<Void> {
     }
 
     /**
-     * @param remote the name or URL of a remote repository to fetch from
+     * @param remoteName the name or URL of a remote repository to fetch from
      * @return {@code this}
      */
     public FetchOp addRemote(final String remoteName) {
@@ -79,12 +82,13 @@ public class FetchOp extends AbstractGeoGitOp<Void> {
     }
 
     /**
-     * @param remote the remote repository to fetch from
+     * @param remoteSupplier the remote repository to fetch from
      * @return {@code this}
      */
     public FetchOp addRemote(Supplier<Optional<Remote>> remoteSupplier) {
         Preconditions.checkNotNull(remoteSupplier);
         Optional<Remote> remote = remoteSupplier.get();
+        Preconditions.checkState(remote.isPresent(), "Remote could not be resolved.");
         if (remote.isPresent()) {
             remotes.add(remote.get());
         }
@@ -114,7 +118,11 @@ public class FetchOp extends AbstractGeoGitOp<Void> {
         Preconditions.checkState(remotes.size() > 0,
                 "No remote repository specified.  Please specify a remote name to fetch from.");
 
+        getProgressListener().started();
+
         for (Remote remote : remotes) {
+            ProgressListener subProgress = this.subProgress(100.f / remotes.size());
+            subProgress.started();
             final ImmutableSet<Ref> remoteRemoteRefs = command(LsRemote.class).setRemote(
                     Suppliers.ofInstance(Optional.of(remote))).call();
             final ImmutableSet<Ref> localRemoteRefs = command(LsRemote.class)
@@ -148,7 +156,10 @@ public class FetchOp extends AbstractGeoGitOp<Void> {
             } catch (IOException e) {
                 Throwables.propagate(e);
             }
+            int refCount = 0;
             for (Ref ref : needUpdate) {
+                refCount++;
+                subProgress.progress((refCount * 100.f) / needUpdate.size());
                 // Fetch updated data from this ref
                 remoteRepo.get().fetchNewData(localRepository, ref);
 
@@ -166,13 +177,19 @@ public class FetchOp extends AbstractGeoGitOp<Void> {
             } catch (IOException e) {
                 Throwables.propagate(e);
             }
+            subProgress.complete();
         }
+        getProgressListener().complete();
 
         return null;
     }
 
+    /**
+     * @param remote the remote to get
+     * @return an interface for the remote repository
+     */
     public Optional<IRemoteRepo> getRemoteRepo(Remote remote) {
-        return RemoteUtils.newRemote(localRepository.getInjectorBuilder().get(), remote);
+        return RemoteUtils.newRemote(GlobalInjectorBuilder.builder.get(), remote);
     }
 
     private void updateLocalRef(Ref remoteRef, Remote remote, ImmutableSet<Ref> localRemoteRefs) {

@@ -8,8 +8,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map.Entry;
 
-import org.geogit.api.NodeRef;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
+import org.geogit.api.RevObject;
 import org.geogit.api.RevTree;
 import org.geogit.storage.ObjectWriter;
 
@@ -22,16 +23,6 @@ import com.google.common.collect.ImmutableSortedMap;
  */
 
 class HessianRevTreeWriter extends HessianRevWriter implements ObjectWriter<RevTree> {
-    private final RevTree tree;
-
-    /**
-     * Constructs a new {@code HessianRevTreeWriter} with the given {@link RevTree}.
-     * 
-     * @param tree the tree to write
-     */
-    public HessianRevTreeWriter(RevTree tree) {
-        this.tree = tree;
-    }
 
     /**
      * Writes the provided {@link RevTree} to the output stream.
@@ -39,12 +30,11 @@ class HessianRevTreeWriter extends HessianRevWriter implements ObjectWriter<RevT
      * @param the stream to write to
      */
     @Override
-    public void write(OutputStream out) throws IOException {
-        RevTree revTree = this.tree;
+    public void write(final RevTree revTree, OutputStream out) throws IOException {
         Hessian2Output hout = new Hessian2Output(out);
         try {
             hout.startMessage();
-            hout.writeInt(BlobType.REVTREE.getValue());
+            hout.writeInt(RevObject.TYPE.TREE.value());
 
             final long size = revTree.size();
             hout.writeLong(size);
@@ -66,10 +56,10 @@ class HessianRevTreeWriter extends HessianRevWriter implements ObjectWriter<RevT
         }
     }
 
-    private void writeChildren(Hessian2Output hout, ImmutableCollection<NodeRef> children)
+    private void writeChildren(Hessian2Output hout, ImmutableCollection<Node> children)
             throws IOException {
-        for (NodeRef ref : children) {
-            HessianRevTreeWriter.this.writeNodeRef(hout, ref);
+        for (Node ref : children) {
+            HessianRevTreeWriter.this.writeNode(hout, ref);
         }
     }
 

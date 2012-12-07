@@ -5,18 +5,17 @@
 package org.geogit.storage.hessian;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.TreeMap;
 
-import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.RevObject;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
 import org.geogit.api.RevTreeImpl;
 import org.geogit.storage.ObjectReader;
 
 import com.caucho.hessian.io.Hessian2Input;
-import com.google.common.base.Throwables;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Maps;
@@ -25,56 +24,46 @@ import com.google.common.collect.Maps;
  * Reads {@link RevTree trees} from a binary encoded stream.
  * 
  */
-class HessianRevTreeReader extends HessianRevReader implements ObjectReader<RevTree> {
+class HessianRevTreeReader extends HessianRevReader<RevTree> implements ObjectReader<RevTree> {
 
     public HessianRevTreeReader() {
     }
 
     @Override
-    public RevTree read(ObjectId id, InputStream rawData) throws IllegalArgumentException {
-        Hessian2Input hin = new Hessian2Input(rawData);
-        try {
-            hin.startMessage();
-            BlobType blobType = BlobType.fromValue(hin.readInt());
-            if (blobType != BlobType.REVTREE)
-                throw new IllegalArgumentException("Could not parse blob of type " + blobType
-                        + " as rev tree.");
+    protected RevTree read(ObjectId id, Hessian2Input hin, RevObject.TYPE blobType)
+            throws IOException {
+        Preconditions.checkArgument(RevObject.TYPE.TREE.equals(blobType));
 
-            final long size = hin.readLong();
+        final long size = hin.readLong();
 
-            Builder<NodeRef> features = ImmutableList.builder();
-            Builder<NodeRef> trees = ImmutableList.builder();
-            TreeMap<Integer, ObjectId> subtrees = Maps.newTreeMap();
+        Builder<org.geogit.api.Node> features = ImmutableList.builder();
+        Builder<org.geogit.api.Node> trees = ImmutableList.builder();
+        TreeMap<Integer, ObjectId> subtrees = Maps.newTreeMap();
 
-            while (true) {
-                Node type = Node.fromValue(hin.readInt());
+        while (true) {
+            Node type = Node.fromValue(hin.readInt());
 
-                if (type.equals(Node.REF)) {
-                    NodeRef entryRef = readNodeRef(hin);
-                    if (entryRef.getType().equals(TYPE.TREE)) {
-                        trees.add(entryRef);
-                    } else {
-                        features.add(entryRef);
-                    }
-                } else if (type.equals(Node.BUCKET)) {
-                    parseAndSetSubTree(hin, subtrees);
-                } else if (type.equals(Node.END)) {
-                    break;
+            if (type.equals(Node.REF)) {
+                org.geogit.api.Node entryRef = readNode(hin);
+                if (entryRef.getType().equals(TYPE.TREE)) {
+                    trees.add(entryRef);
+                } else {
+                    features.add(entryRef);
                 }
+            } else if (type.equals(Node.BUCKET)) {
+                parseAndSetSubTree(hin, subtrees);
+            } else if (type.equals(Node.END)) {
+                break;
             }
-
-            hin.completeMessage();
-
-            RevTree tree;
-            if (subtrees.isEmpty()) {
-                tree = RevTreeImpl.createLeafTree(id, size, features.build(), trees.build());
-            } else {
-                tree = RevTreeImpl.createNodeTree(id, size, subtrees);
-            }
-            return tree;
-        } catch (Exception e) {
-            throw Throwables.propagate(e);
         }
+
+        RevTree tree;
+        if (subtrees.isEmpty()) {
+            tree = RevTreeImpl.createLeafTree(id, size, features.build(), trees.build());
+        } else {
+            tree = RevTreeImpl.createNodeTree(id, size, subtrees);
+        }
+        return tree;
     }
 
     private void parseAndSetSubTree(Hessian2Input hin, TreeMap<Integer, ObjectId> subtrees)

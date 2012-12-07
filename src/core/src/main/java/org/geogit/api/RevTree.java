@@ -7,7 +7,6 @@ package org.geogit.api;
 import java.util.Iterator;
 
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.hessian.HessianFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
@@ -17,7 +16,7 @@ import com.google.common.collect.Iterators;
 /**
  * Provides an interface for accessing and managing GeoGit revision trees.
  * 
- * @see NodeRef
+ * @see Node
  */
 public interface RevTree extends RevObject {
 
@@ -56,14 +55,9 @@ public interface RevTree extends RevObject {
             return ObjectId.NULL;
         }
 
-        // @Override
-        // public BigInteger size() {
-        // return BigInteger.ZERO;
-        // }
-
         @Override
         public RevTreeBuilder builder(ObjectDatabase target) {
-            return new RevTreeBuilder(target, new HessianFactory());
+            return new RevTreeBuilder(target);
         }
 
         @Override
@@ -72,12 +66,12 @@ public interface RevTree extends RevObject {
         }
 
         @Override
-        public Optional<ImmutableList<NodeRef>> trees() {
+        public Optional<ImmutableList<Node>> trees() {
             return Optional.absent();
         }
 
         @Override
-        public Optional<ImmutableList<NodeRef>> features() {
+        public Optional<ImmutableList<Node>> features() {
             return Optional.absent();
         }
 
@@ -92,7 +86,7 @@ public interface RevTree extends RevObject {
         }
 
         @Override
-        public Iterator<NodeRef> children() {
+        public Iterator<Node> children() {
             return Iterators.emptyIterator();
         }
 
@@ -105,9 +99,9 @@ public interface RevTree extends RevObject {
 
     public boolean isEmpty();
 
-    public Optional<ImmutableList<NodeRef>> trees();
+    public Optional<ImmutableList<Node>> trees();
 
-    public Optional<ImmutableList<NodeRef>> features();
+    public Optional<ImmutableList<Node>> features();
 
     public Optional<ImmutableSortedMap<Integer, ObjectId>> buckets();
 
@@ -118,5 +112,5 @@ public interface RevTree extends RevObject {
      * 
      * @return an iterator over the trees and feature children collections, in that order
      */
-    public Iterator<NodeRef> children();
+    public Iterator<Node> children();
 }

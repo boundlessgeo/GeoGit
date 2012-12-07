@@ -169,7 +169,7 @@ public class RevParse extends AbstractGeoGitOp<Optional<ObjectId>> {
                     .setChildPath(path).call();
             Preconditions.checkArgument(ref.isPresent(),
                     "pathspec '%s' did not match any valid path", path);
-            resolved = Optional.of(ref.get().getObjectId());
+            resolved = Optional.of(ref.get().objectId());
         }
         return resolved;
     }

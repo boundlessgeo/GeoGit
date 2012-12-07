@@ -39,7 +39,6 @@ import org.geogit.cli.AnsiDecorator;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
 import org.geogit.repository.Repository;
-import org.geogit.storage.ObjectReader;
 import org.geogit.storage.StagingDatabase;
 
 import com.beust.jcommander.Parameter;
@@ -148,9 +147,9 @@ public class Diff extends AbstractCommand implements CLICommand {
                     .getMetadataId());
 
             String oldId = oldObject == null ? shortOid(ObjectId.NULL) : shortOid(oldObject
-                    .getObjectId());
+                    .objectId());
             String newId = newObject == null ? shortOid(ObjectId.NULL) : shortOid(newObject
-                    .getObjectId());
+                    .objectId());
 
             ansi.a(oldMode).a(" ");
             ansi.a(newMode).a(" ");
@@ -183,8 +182,7 @@ public class Diff extends AbstractCommand implements CLICommand {
             // final String newPath = entry.newPath();
 
             ObjectId id = null;
-            ObjectReader<Object> reader = null;
-            index.get(id, reader);
+            index.get(id);
         }
     }
 
@@ -193,14 +191,14 @@ public class Diff extends AbstractCommand implements CLICommand {
         NodeRef oldObject = entry.getOldObject();
         NodeRef newObject = entry.getNewObject();
         if (oldObject == null) {
-            path = newObject.getPath();
+            path = newObject.path();
         } else if (newObject == null) {
-            path = oldObject.getPath();
+            path = oldObject.path();
         } else {
-            if (oldObject.getPath().equals(newObject.getPath())) {
-                path = oldObject.getPath();
+            if (oldObject.path().equals(newObject.path())) {
+                path = oldObject.path();
             } else {
-                path = oldObject.getPath() + " -> " + newObject.getPath();
+                path = oldObject.path() + " -> " + newObject.path();
             }
         }
         return path;

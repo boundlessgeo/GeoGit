@@ -27,8 +27,6 @@ import com.google.inject.Inject;
 /**
  * List index contents
  * 
- * @author volaya
- * 
  */
 public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
 
@@ -110,7 +108,7 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
             Optional<NodeRef> treeRef = command(FindTreeChild.class).setParent(workTree.getTree())
                     .setChildPath(ref).call();
             Preconditions.checkArgument(treeRef.isPresent(), "Invalid reference: %s", ref);
-            ObjectId treeId = treeRef.get().getObjectId();
+            ObjectId treeId = treeRef.get().objectId();
             revObject = command(RevObjectParse.class).setObjectId(treeId).call(RevObject.class);
         }
 
@@ -153,8 +151,11 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
                 throw new IllegalStateException("Unknown strategy: " + this.strategy);
             }
 
-            DepthTreeIterator iter = new DepthTreeIterator((RevTree) revObject.get(), index,
-                    iterStrategy);
+            final String path = ref.lastIndexOf(':') != -1 ? ref
+                    .substring(ref.lastIndexOf(':') + 1) : "";
+            // TODO: CHANGE METADATAID
+            DepthTreeIterator iter = new DepthTreeIterator(path, ObjectId.NULL,
+                    (RevTree) revObject.get(), index, iterStrategy);
             return iter;
         default:
             throw new IllegalArgumentException(String.format("Invalid reference: %s", ref));

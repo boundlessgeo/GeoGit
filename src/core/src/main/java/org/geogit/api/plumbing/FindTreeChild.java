@@ -8,13 +8,13 @@ package org.geogit.api.plumbing;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevTree;
 import org.geogit.repository.DepthSearch;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectSerialisingFactory;
 import org.geogit.storage.StagingDatabase;
 
 import com.google.common.base.Optional;
@@ -23,7 +23,8 @@ import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 
 /**
- * Finds a {@link NodeRef} by searching the given {@link RevTree} for the given path.
+ * Finds a {@link Node} by searching the given {@link RevTree} for the given path, returns the
+ * {@link NodeRef} that wraps it.
  * 
  * @see DepthSearch
  * @see ResolveTreeish
@@ -34,8 +35,6 @@ public class FindTreeChild extends AbstractGeoGitOp<Optional<NodeRef>> {
     private Supplier<RevTree> parent;
 
     private String childPath;
-
-    private ObjectSerialisingFactory serialFactory;
 
     private String parentPath;
 
@@ -48,20 +47,16 @@ public class FindTreeChild extends AbstractGeoGitOp<Optional<NodeRef>> {
     /**
      * Constructs a new {@code FindTreeChild} instance with the specified parameters.
      * 
-     * @param serialFactory the serialization factory
      * @param odb the repository object database
      * @param index the staging database
      */
     @Inject
-    public FindTreeChild(ObjectSerialisingFactory serialFactory, ObjectDatabase odb,
-            StagingDatabase index) {
-        this.serialFactory = serialFactory;
+    public FindTreeChild(ObjectDatabase odb, StagingDatabase index) {
         this.odb = odb;
         this.index = index;
     }
 
-    public FindTreeChild(ObjectSerialisingFactory serialFactory, ObjectDatabase odb) {
-        this.serialFactory = serialFactory;
+    public FindTreeChild(ObjectDatabase odb) {
         this.odb = odb;
         this.index = odb;
     }
@@ -116,7 +111,7 @@ public class FindTreeChild extends AbstractGeoGitOp<Optional<NodeRef>> {
     /**
      * Executes the command.
      * 
-     * @return an {@code Optional} that contains the NodeRef if it was found, or
+     * @return an {@code Optional} that contains the Node if it was found, or
      *         {@link Optional#absent()} if it wasn't
      */
     @Override
@@ -136,9 +131,10 @@ public class FindTreeChild extends AbstractGeoGitOp<Optional<NodeRef>> {
         final String parentPath = this.parentPath == null ? "" : this.parentPath;
         final ObjectDatabase target = indexDb ? index : odb;
 
-        DepthSearch depthSearch = new DepthSearch(target, serialFactory);
+        DepthSearch depthSearch = new DepthSearch(target);
         Optional<NodeRef> childRef = depthSearch.find(tree, parentPath, path);
         return childRef;
+
     }
 
 }

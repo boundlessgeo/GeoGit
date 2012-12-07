@@ -3,7 +3,6 @@ package org.geogit.geotools.plumbing;
 /**
  * Exception thrown by operations within the GeoTools extension.
  * 
- * @author jgarrett
  */
 @SuppressWarnings("serial")
 public class GeoToolsOpException extends RuntimeException {
@@ -11,7 +10,7 @@ public class GeoToolsOpException extends RuntimeException {
      * Enumeration of possible status codes that indicate what type of exception occurred.
      */
     public enum StatusCode {
-        ALL_AND_TABLE_DEFINED, DATASTORE_NOT_DEFINED, TABLE_NOT_DEFINED, NO_FEATURES_FOUND, TABLE_NOT_FOUND, UNABLE_TO_GET_NAMES, UNABLE_TO_GET_FEATURES, UNABLE_TO_INSERT
+        ALL_AND_TABLE_DEFINED, DATASTORE_NOT_DEFINED, TABLE_NOT_DEFINED, NO_FEATURES_FOUND, TABLE_NOT_FOUND, UNABLE_TO_GET_NAMES, UNABLE_TO_GET_FEATURES, UNABLE_TO_INSERT, UNABLE_TO_ADD, CANNOT_CREATE_FEATURESTORE
     }
 
     /**

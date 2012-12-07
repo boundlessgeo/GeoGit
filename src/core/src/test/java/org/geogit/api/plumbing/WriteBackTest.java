@@ -6,6 +6,7 @@
 package org.geogit.api.plumbing;
 
 import org.geogit.api.MemoryModule;
+import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevObject.TYPE;
@@ -14,8 +15,6 @@ import org.geogit.api.RevTreeBuilder;
 import org.geogit.di.GeogitModule;
 import org.geogit.repository.DepthSearch;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectReader;
-import org.geogit.storage.ObjectSerialisingFactory;
 import org.geogit.storage.StagingDatabase;
 import org.junit.Assert;
 import org.junit.Before;
@@ -37,8 +36,6 @@ public class WriteBackTest extends Assert {
 
     StagingDatabase indexDb;
 
-    ObjectSerialisingFactory serialFactory;
-
     @Before
     public void setUp() {
         Injector injector = Guice.createInjector(Modules.override(new GeogitModule()).with(
@@ -46,7 +43,6 @@ public class WriteBackTest extends Assert {
 
         odb = injector.getInstance(ObjectDatabase.class);
         indexDb = injector.getInstance(StagingDatabase.class);
-        serialFactory = injector.getInstance(ObjectSerialisingFactory.class);
         odb.open();
         indexDb.open();
 
@@ -56,28 +52,28 @@ public class WriteBackTest extends Assert {
     @Test
     public void testSimple() {
 
-        RevTreeBuilder oldRoot = new RevTreeBuilder(odb, serialFactory);
-        RevTree tree = new RevTreeBuilder(odb, serialFactory).put(blob("blob")).build();
+        RevTreeBuilder oldRoot = new RevTreeBuilder(odb);
+        RevTree tree = new RevTreeBuilder(odb).put(blob("blob")).build();
         ObjectId newRootId = writeBack.setAncestor(oldRoot).setChildPath("subtree").setTree(tree)
                 .call();
 
-        Optional<NodeRef> ref = new DepthSearch(odb, serialFactory).find(newRootId, "subtree");
+        Optional<NodeRef> ref = new DepthSearch(odb).find(newRootId, "subtree");
         assertTrue(ref.isPresent());
     }
 
     @Test
     public void testSingleLevel() {
 
-        RevTreeBuilder oldRoot = new RevTreeBuilder(odb, serialFactory);
+        RevTreeBuilder oldRoot = new RevTreeBuilder(odb);
 
-        RevTree tree = new RevTreeBuilder(odb, serialFactory).put(blob("level1/blob")).build();
+        RevTree tree = new RevTreeBuilder(odb).put(blob("blob")).build();
 
         ObjectId newRootId = writeBack.setAncestor(oldRoot).setChildPath("level1").setTree(tree)
                 .call();
 
         // created the intermediate tree node?
         Optional<NodeRef> ref;
-        DepthSearch depthSearch = new DepthSearch(odb, serialFactory);
+        DepthSearch depthSearch = new DepthSearch(odb);
         ref = depthSearch.find(newRootId, "level1");
         assertTrue(ref.isPresent());
 
@@ -88,17 +84,16 @@ public class WriteBackTest extends Assert {
     @Test
     public void testSingleNested() {
 
-        RevTreeBuilder oldRoot = new RevTreeBuilder(odb, serialFactory);
+        RevTreeBuilder oldRoot = new RevTreeBuilder(odb);
 
-        RevTree tree = new RevTreeBuilder(odb, serialFactory).put(blob("level1/level2/blob"))
-                .build();
+        RevTree tree = new RevTreeBuilder(odb).put(blob("blob")).build();
 
         ObjectId newRootId = writeBack.setAncestor(oldRoot).setChildPath("level1/level2")
                 .setTree(tree).call();
 
         // created the intermediate tree node?
         Optional<NodeRef> ref;
-        DepthSearch depthSearch = new DepthSearch(odb, serialFactory);
+        DepthSearch depthSearch = new DepthSearch(odb);
         ref = depthSearch.find(newRootId, "level1");
         assertTrue(ref.isPresent());
 
@@ -112,20 +107,20 @@ public class WriteBackTest extends Assert {
     @Test
     public void testSiblingsSingleLevel() {
 
-        RevTreeBuilder ancestor = new RevTreeBuilder(odb, serialFactory);
+        RevTreeBuilder ancestor = new RevTreeBuilder(odb);
 
-        RevTree tree1 = new RevTreeBuilder(odb, serialFactory).put(blob("subtree1/blob")).build();
-        RevTree tree2 = new RevTreeBuilder(odb, serialFactory).put(blob("subtree2/blob")).build();
+        RevTree tree1 = new RevTreeBuilder(odb).put(blob("blob")).build();
+        RevTree tree2 = new RevTreeBuilder(odb).put(blob("blob")).build();
 
         ObjectId newRootId1 = writeBack.setAncestor(ancestor).setChildPath("subtree1")
                 .setTree(tree1).call();
 
-        ancestor = odb.get(newRootId1, serialFactory.createRevTreeReader()).builder(odb);
+        ancestor = odb.getTree(newRootId1).builder(odb);
         ObjectId newRootId2 = writeBack.setAncestor(ancestor).setChildPath("subtree2")
                 .setTree(tree2).call();
 
         // created the intermediate tree node?
-        DepthSearch depthSearch = new DepthSearch(odb, serialFactory);
+        DepthSearch depthSearch = new DepthSearch(odb);
         assertTrue(depthSearch.find(newRootId2, "subtree1").isPresent());
         assertTrue(depthSearch.find(newRootId2, "subtree2").isPresent());
         assertTrue(depthSearch.find(newRootId2, "subtree1/blob").isPresent());
@@ -135,22 +130,19 @@ public class WriteBackTest extends Assert {
     @Test
     public void testSiblingsNested() {
 
-        RevTreeBuilder oldRoot = new RevTreeBuilder(odb, serialFactory);
+        RevTreeBuilder oldRoot = new RevTreeBuilder(odb);
 
-        RevTree tree1 = new RevTreeBuilder(odb, serialFactory).put(blob("subtree1/level2/blob"))
-                .build();
-        RevTree tree2 = new RevTreeBuilder(odb, serialFactory).put(
-                blob("subtree2/level2/level3/blob")).build();
+        RevTree tree1 = new RevTreeBuilder(odb).put(blob("blob")).build();
+        RevTree tree2 = new RevTreeBuilder(odb).put(blob("blob")).build();
 
         ObjectId newRootId1 = writeBack.setAncestor(oldRoot).setChildPath("subtree1/level2")
                 .setTree(tree1).call();
 
-        ObjectReader<RevTree> reader = serialFactory.createRevTreeReader();
-        ObjectId newRootId2 = writeBack.setAncestor(odb.get(newRootId1, reader).builder(odb))
+        ObjectId newRootId2 = writeBack.setAncestor(odb.getTree(newRootId1).builder(odb))
                 .setChildPath("subtree2/level2/level3").setTree(tree2).call();
 
         // created the intermediate tree node?
-        DepthSearch depthSearch = new DepthSearch(odb, serialFactory);
+        DepthSearch depthSearch = new DepthSearch(odb);
         assertTrue(depthSearch.find(newRootId2, "subtree1").isPresent());
         assertTrue(depthSearch.find(newRootId2, "subtree1/level2").isPresent());
         assertTrue(depthSearch.find(newRootId2, "subtree1/level2/blob").isPresent());
@@ -161,7 +153,7 @@ public class WriteBackTest extends Assert {
         assertTrue(depthSearch.find(newRootId2, "subtree2/level2/level3/blob").isPresent());
     }
 
-    private NodeRef blob(String path) {
-        return new NodeRef(path, ObjectId.forString(path), ObjectId.NULL, TYPE.FEATURE);
+    private Node blob(String path) {
+        return new Node(path, ObjectId.forString(path), ObjectId.NULL, TYPE.FEATURE);
     }
 }

@@ -23,7 +23,6 @@ import com.beust.jcommander.internal.Maps;
 /**
  * A template for PostGIS commands; provides out of the box support for the --help argument so far.
  * 
- * @author jgarrett
  * @see CLICommand
  */
 public abstract class AbstractPGCommand implements CLICommand {
@@ -59,14 +58,18 @@ public abstract class AbstractPGCommand implements CLICommand {
     @Override
     public void run(GeogitCLI cli) throws Exception {
         if (help) {
-            JCommander jc = new JCommander(this);
-            String commandName = this.getClass().getAnnotation(Parameters.class).commandNames()[0];
-            jc.setProgramName("geogit pg " + commandName);
-            jc.usage();
+            printUsage();
             return;
         }
 
         runInternal(cli);
+    }
+
+    protected void printUsage() {
+        JCommander jc = new JCommander(this);
+        String commandName = this.getClass().getAnnotation(Parameters.class).commandNames()[0];
+        jc.setProgramName("geogit pg " + commandName);
+        jc.usage();
     }
 
     /**

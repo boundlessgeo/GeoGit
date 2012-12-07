@@ -49,7 +49,6 @@ import com.google.common.base.Suppliers;
  * <li> {@code geogit rebase [--onto <newbase>] [<upstream>] [<branch>]}
  * </ul>
  * 
- * @author jgarrett
  * @see RebaseOp
  */
 @Parameters(commandNames = { "rebase" }, commandDescription = "Forward-port local commits to the updated upstream head")
@@ -91,6 +90,7 @@ public class Rebase extends AbstractCommand implements CLICommand {
                 .setName(arguments.get(0)).call();
 
         RebaseOp rebase = cli.getGeogit().command(RebaseOp.class);
+        rebase.setProgressListener(cli.getProgressListener());
 
         if (onto != null) {
             Optional<ObjectId> ontoId = cli.getGeogit().command(RevParse.class).setRefSpec(onto)

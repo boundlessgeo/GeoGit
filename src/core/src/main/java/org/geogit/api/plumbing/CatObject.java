@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.NodeRef;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevCommit;
 import org.geogit.api.RevFeature;
@@ -112,13 +112,13 @@ public class CatObject extends AbstractGeoGitOp<CharSequence> {
             }
         }
 
-        private void printChildren(Iterator<NodeRef> children, int indent) {
+        private void printChildren(Iterator<Node> children, int indent) {
             while (children.hasNext()) {
-                NodeRef ref = children.next();
+                Node ref = children.next();
                 indent(indent + 1);
                 print(ref.getObjectId().toString());
                 print(" --> ");
-                println(ref.getPath() + " ");
+                println(ref.getName() + " ");
             }
         }
 
