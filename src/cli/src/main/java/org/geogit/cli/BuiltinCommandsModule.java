@@ -8,6 +8,7 @@ import org.geogit.cli.plumbing.LsTree;
 import org.geogit.cli.plumbing.RevParse;
 import org.geogit.cli.porcelain.Add;
 import org.geogit.cli.porcelain.Branch;
+import org.geogit.cli.porcelain.Cat;
 import org.geogit.cli.porcelain.Checkout;
 import org.geogit.cli.porcelain.CherryPick;
 import org.geogit.cli.porcelain.Clean;
@@ -34,6 +35,7 @@ import com.google.inject.AbstractModule;
  * 
  * @see Add
  * @see Branch
+ * @see Cat
  * @see Checkout
  * @see CherryPick
  * @see Clean
@@ -60,6 +62,7 @@ public class BuiltinCommandsModule extends AbstractModule implements CLIModule {
         bind(RevParse.class);
         bind(Add.class);
         bind(Branch.class);
+        bind(Cat.class);
         bind(Checkout.class);
         bind(CherryPick.class);
         bind(Clean.class);
