@@ -119,7 +119,7 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
         case FEATURE:
             // Not supported by now. Should use cat or show to describe feature.
             throw new IllegalArgumentException(
-                    "Reference points to a feature element. Should point to a tree or commit.");
+                    "Reference points to a feature element. Should point to a tree or commit.\nUse cat or show commands to describe a feature");
         case COMMIT:
             RevCommit revCommit = (RevCommit) revObject.get();
             ObjectId treeId = revCommit.getTreeId();

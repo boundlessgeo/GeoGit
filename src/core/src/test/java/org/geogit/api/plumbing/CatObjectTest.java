@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.HashSet;
 
-import org.geogit.api.NodeRef;
+import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureBuilder;
@@ -12,7 +12,6 @@ import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
 import org.geogit.api.RevTreeBuilder;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectSerialisingFactory;
 import org.geogit.test.integration.RepositoryTestCase;
 import org.junit.Test;
 
@@ -22,8 +21,6 @@ public class CatObjectTest extends RepositoryTestCase {
 
     private ObjectDatabase odb;
 
-    private ObjectSerialisingFactory serialFactory;
-
     private static final ObjectId FAKE_ID = ObjectId.forString("fake");
 
     private static final String FEATURE_PREFIX = "Feature.";
@@ -31,7 +28,6 @@ public class CatObjectTest extends RepositoryTestCase {
     @Override
     protected void setUpInternal() throws Exception {
         odb = repo.getObjectDatabase();
-        serialFactory = repo.getSerializationFactory();
     }
 
     @Test
@@ -71,12 +67,11 @@ public class CatObjectTest extends RepositoryTestCase {
         assertEquals(numChildren, featureNames.size());
     }
 
-
     private RevTree createTree(int numChildren) {
-        RevTreeBuilder rtb = new RevTreeBuilder(odb, serialFactory);
+        RevTreeBuilder rtb = new RevTreeBuilder(odb);
         for (int i = 0; i < numChildren; i++) {
             String key = FEATURE_PREFIX + i;
-            NodeRef ref = new NodeRef(key, FAKE_ID, FAKE_ID, TYPE.FEATURE);
+            Node ref = new Node(key, FAKE_ID, FAKE_ID, TYPE.FEATURE);
             rtb.put(ref);
         }
         return rtb.build();
