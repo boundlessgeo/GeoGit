@@ -3,7 +3,7 @@
  * application directory.
  */
 
-package org.geogit.storage;
+package org.geogit.storage.text;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,7 +11,10 @@ import java.io.OutputStreamWriter;
 
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevCommit;
-import org.geogit.storage.text.TextSerializationFactory;
+import org.geogit.api.RevObject.TYPE;
+import org.geogit.storage.ObjectReader;
+import org.geogit.storage.ObjectSerialisingFactory;
+import org.geogit.storage.RevCommitSerializationTest;
 import org.junit.Test;
 
 /**
@@ -32,6 +35,7 @@ public class RevCommitTextSerializationTest extends RevCommitSerializationTest {
         // a missing entry
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         OutputStreamWriter writer = new OutputStreamWriter(out, "UTF-8");
+        writer.write(TYPE.COMMIT.name() + "\n");
         writer.write("id\t" + ObjectId.forString("ID_STRING") + "\n");
         writer.write("tree\t" + ObjectId.forString("TREE_ID_STRING") + "\n");
         writer.write("author\tvolaya\tvolaya@opengeo.org\n");
@@ -52,6 +56,7 @@ public class RevCommitTextSerializationTest extends RevCommitSerializationTest {
         // a wrongly formatted author
         out = new ByteArrayOutputStream();
         writer = new OutputStreamWriter(out, "UTF-8");
+        writer.write(TYPE.COMMIT.name() + "\n");
         writer.write("id\t" + ObjectId.forString("ID_STRING") + "\n");
         writer.write("tree\t" + ObjectId.forString("TREE_ID_STRING") + "\n");
         writer.write("parents\t" + ObjectId.forString("PARENT_ID_STRING") + "\n");
@@ -67,6 +72,19 @@ public class RevCommitTextSerializationTest extends RevCommitSerializationTest {
             fail();
         } catch (Exception e) {
             assertTrue(true);
+        }
+
+        // a wrong category
+        out = new ByteArrayOutputStream();
+        writer = new OutputStreamWriter(out, "UTF-8");
+        writer.write(TYPE.FEATURE.name() + "\n");
+        writer.flush();
+        try {
+            reader.read(ObjectId.forString("ID_STRING"),
+                    new ByteArrayInputStream(out.toByteArray()));
+            fail();
+        } catch (Exception e) {
+            assertTrue(e.getMessage().equals("Wrong type: FEATURE"));
         }
 
     }

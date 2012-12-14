@@ -2,8 +2,6 @@ package org.geogit.api.plumbing;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.HashSet;
-
 import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevFeature;
@@ -16,6 +14,7 @@ import org.geogit.test.integration.RepositoryTestCase;
 import org.junit.Test;
 
 import com.google.common.base.Suppliers;
+import com.vividsolutions.jts.geom.Point;
 
 public class CatObjectTest extends RepositoryTestCase {
 
@@ -37,14 +36,11 @@ public class CatObjectTest extends RepositoryTestCase {
         CharSequence desc = geogit.command(CatObject.class).setObject(Suppliers.ofInstance(tree))
                 .call();
         String[] lines = desc.toString().split("\n");
-        assertEquals(numChildren + 1, lines.length);
-        HashSet<String> featureNames = new HashSet<String>();
-        for (int i = 1; i < lines.length; i++) {
-            String[] tokens = lines[i].split("-->");
-            assertEquals(FAKE_ID.toString(), tokens[0].trim());
-            featureNames.add(tokens[1]);
+        assertEquals(numChildren + 2, lines.length);
+        for (int i = 2; i < lines.length; i++) {
+            String[] tokens = lines[i].split("\t");
+            assertEquals(FAKE_ID.toString(), tokens[3].trim());
         }
-        assertEquals(numChildren, featureNames.size());
 
     }
 
@@ -55,16 +51,11 @@ public class CatObjectTest extends RepositoryTestCase {
         CharSequence desc = geogit.command(CatObject.class).setObject(Suppliers.ofInstance(tree))
                 .call();
         String[] lines = desc.toString().split("\n");
-        assertEquals(numChildren + 1 + tree.buckets().get().size(), lines.length);
-        HashSet<String> featureNames = new HashSet<String>();
-        for (int i = 1; i < lines.length; i++) {
-            String[] tokens = lines[i].split("-->");
-            if (tokens[1].contains(FEATURE_PREFIX)) {
-                assertEquals(FAKE_ID.toString(), tokens[0].trim());
-                featureNames.add(tokens[1]);
-            }
+        assertEquals(tree.buckets().get().size() + 2, lines.length);
+        for (int i = 2; i < lines.length; i++) {
+            String[] tokens = lines[i].split("\t");
+            assertEquals(tokens[0].trim(), "BUCKET");
         }
-        assertEquals(numChildren, featureNames.size());
     }
 
     private RevTree createTree(int numChildren) {
@@ -87,9 +78,9 @@ public class CatObjectTest extends RepositoryTestCase {
         String[] lines = desc.toString().split("\n");
 
         assertEquals(points1.getProperties().size() + 1, lines.length);
-        assertEquals("1000", lines[1]);
-        assertEquals("POINT (1 1)", lines[2]);
-        assertEquals("StringProp1_1", lines[3]);
+        assertEquals(Integer.class.getName() + "\t1000", lines[1]);
+        assertEquals(Point.class.getName() + "\tPOINT (1 1)", lines[2]);
+        assertEquals(String.class.getName() + "\tStringProp1_1", lines[3]);
 
     }
 

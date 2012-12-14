@@ -1,4 +1,4 @@
-package org.geogit.storage;
+package org.geogit.storage.text;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -10,7 +10,10 @@ import java.util.UUID;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureBuilder;
-import org.geogit.storage.text.TextSerializationFactory;
+import org.geogit.api.RevObject.TYPE;
+import org.geogit.storage.ObjectReader;
+import org.geogit.storage.ObjectSerialisingFactory;
+import org.geogit.storage.RevFeatureSerializationTest;
 import org.junit.Test;
 import org.opengis.feature.Feature;
 
@@ -42,6 +45,7 @@ public class RevFeatureTextSerializationTest extends RevFeatureSerializationTest
         // a wrong value
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         OutputStreamWriter writer = new OutputStreamWriter(out, "UTF-8");
+        writer.write(TYPE.FEATURE.name() + "\n");
         writer.write("id\t" + ObjectId.forString("ID_STRING") + "\n");
         writer.write(Float.class.getName() + "\tNUMBER" + "\n");
         writer.flush();
@@ -58,6 +62,7 @@ public class RevFeatureTextSerializationTest extends RevFeatureSerializationTest
         // an unrecognized class
         out = new ByteArrayOutputStream();
         writer = new OutputStreamWriter(out, "UTF-8");
+        writer.write(TYPE.FEATURE.name() + "\n");
         writer.write("id\t" + ObjectId.forString("ID_STRING") + "\n");
         writer.write(this.getClass().getName() + "\tvalue" + "\n");
         writer.flush();
@@ -68,6 +73,20 @@ public class RevFeatureTextSerializationTest extends RevFeatureSerializationTest
             fail();
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("Cannot deserialize attribute. Unknown type"));
+        }
+
+        // a wrong category
+        out = new ByteArrayOutputStream();
+        writer = new OutputStreamWriter(out, "UTF-8");
+        writer.write(TYPE.COMMIT.name() + "\n");
+        writer.flush();
+        reader = factory.createFeatureReader();
+        try {
+            reader.read(ObjectId.forString("ID_STRING"),
+                    new ByteArrayInputStream(out.toByteArray()));
+            fail();
+        } catch (Exception e) {
+            assertTrue(e.getMessage().equals("Wrong type: COMMIT"));
         }
 
     }

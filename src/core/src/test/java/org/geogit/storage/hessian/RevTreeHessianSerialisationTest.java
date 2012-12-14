@@ -5,9 +5,9 @@
 package org.geogit.storage.hessian;
 
 import org.geogit.storage.ObjectSerialisingFactory;
-import org.geogit.storage.RevCommitSerializationTest;
+import org.geogit.storage.RevTreeSerializationTest;
 
-public class HessianCommitSerialisationTest extends RevCommitSerializationTest {
+public class RevTreeHessianSerialisationTest extends RevTreeSerializationTest {
 
     @Override
     protected ObjectSerialisingFactory getFactory() {
