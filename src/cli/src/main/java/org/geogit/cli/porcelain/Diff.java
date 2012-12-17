@@ -49,6 +49,7 @@ import org.opengis.feature.type.PropertyDescriptor;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import com.google.common.base.Optional;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -199,6 +200,7 @@ public class Diff extends AbstractCommand implements CLICommand {
 
     private static class FullPrinter implements DiffPrinter {
 
+        @SuppressWarnings("unchecked")
         @Override
         public void print(GeoGIT geogit, ConsoleReader console, DiffEntry diffEntry)
                 throws IOException {
@@ -216,14 +218,14 @@ public class Diff extends AbstractCommand implements CLICommand {
                     Entry<PropertyDescriptor, AttributeDiff<?>> entry = iter.next();
                     PropertyDescriptor pd = entry.getKey();
                     AttributeDiff<?> ad = entry.getValue();
-                    String oldValue = ad.getNewValue() == null ? "[MISSING]" : ad.getNewValue()
-                            .toString();
-                    String newValue = ad.getOldValue() == null ? "[MISSING]" : ad.getOldValue()
-                            .toString();
+                    String newValue = ad.getNewValue() == null ? "[MISSING]"
+                            : ((Optional<Object>) ad.getNewValue()).or("NULL").toString();
+                    String oldValue = ad.getOldValue() == null ? "[MISSING]"
+                            : ((Optional<Object>) ad.getOldValue()).or("NULL").toString();
                     ansi.fg(ad.getOldValue() == null ? GREEN : (ad.getNewValue() == null ? RED
                             : YELLOW));
-                    ansi.a(pd.getName()).a("<").a(pd.getType().toString()).a(">: ").a(oldValue)
-                            .a(" ---> ").a(newValue);
+                    ansi.a(pd.getName()).a("<").a(pd.getType().getBinding().getName()).a(">: ")
+                            .a(oldValue).a(" ---> ").a(newValue);
                     ansi.reset();
                     ansi.newline();
                 }

@@ -254,6 +254,11 @@ public class InitSteps extends AbstractGeogitFunctionalTest {
         insert(points1_modified);
     }
 
+    @Given("^I modify a feature type$")
+    public void I_modify_a_feature_type() throws Throwable {
+        deleteAndReplaceFeatureType();
+    }
+
     @Then("^if I change to the respository subdirectory \"([^\"]*)\"$")
     public void if_I_change_to_the_respository_subdirectory(String subdirSpec) throws Throwable {
         String[] subdirs = subdirSpec.split("/");

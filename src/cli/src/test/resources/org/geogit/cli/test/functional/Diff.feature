@@ -67,4 +67,12 @@ Scenario: Show diff between working tree and index, for a single modified tree, 
      Then the response should contain "Points/Points.1"  
       And the response should not contain "POINT (1 1)"
       And the response should not contain "1000"
+      
+Scenario: Show diff between working tree and index, for a single feature whose feature type has changed
+    Given I have a repository
+      And I stage 6 features   
+      And I modify a feature type         
+     When I run the command "diff -- Points/Points.1"
+     Then the response should contain "extra<java.lang.String>: [MISSING] ---> ExtraString"  
+            
      
