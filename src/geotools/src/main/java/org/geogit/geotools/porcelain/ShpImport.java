@@ -35,6 +35,19 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
     List<String> shapeFile;
 
     /**
+     * appends or replaces existing features, instead of removing existent table and then creating a
+     * new one
+     */
+    @Parameter(names = { "-a", "--append" }, description = "Append features to table instead of overwriting it completely")
+    boolean append;
+
+    /**
+     * Destination path to add features to. Only allowed when importing a single table
+     */
+    @Parameter(names = { "-d", "--dest" }, description = "Table/feature type to import to")
+    String destTable;
+
+    /**
      * Executes the import command using the provided options.
      * 
      * @param cli
@@ -51,6 +64,7 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
             return;
         }
 
+        boolean firstFile = true;
         for (String shp : shapeFile) {
 
             DataStore dataStore = null;
@@ -68,6 +82,7 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
 
                 ProgressListener progressListener = cli.getProgressListener();
                 cli.getGeogit().command(ImportOp.class).setAll(true).setTable(null)
+                        .setOverwrite(!append && firstFile).setDestinationPath(destTable)
                         .setDataStore(dataStore).setProgressListener(progressListener).call();
 
                 cli.getConsole().println(shp + " imported successfully.");
@@ -86,6 +101,9 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
                 case UNABLE_TO_INSERT:
                     cli.getConsole().println("Unable to insert features into the working tree.");
                     break;
+                case UNMATCHING_FEATURE_TYPES:
+                    cli.getConsole().println("Source and destination feature types do not match.");
+                    break;
                 default:
                     break;
                 }
@@ -93,6 +111,7 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
                 dataStore.dispose();
                 cli.getConsole().flush();
             }
+            firstFile = false;
         }
     }
 }

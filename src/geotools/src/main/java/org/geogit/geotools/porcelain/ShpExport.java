@@ -80,8 +80,8 @@ public class ShpExport extends AbstractShpCommand implements CLICommand {
         }
 
         Map<String, Serializable> params = new HashMap<String, Serializable>();
-        params.put("url", new File(shapefile).toURI().toURL());
-        params.put("create spatial index", Boolean.TRUE);
+        params.put(ShapefileDataStoreFactory.URLP.key, new File(shapefile).toURI().toURL());
+        params.put(ShapefileDataStoreFactory.CREATE_SPATIAL_INDEX.key, Boolean.TRUE);
 
         ShapefileDataStore dataStore = (ShapefileDataStore) dataStoreFactory
                 .createNewDataStore(params);

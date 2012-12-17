@@ -20,8 +20,8 @@ import org.geogit.api.plumbing.DiffWorkTree;
 import org.geogit.api.plumbing.RefParse;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffEntry.ChangeType;
+import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.AnsiDecorator;
-import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
 import org.geogit.repository.StagingArea;
 import org.geogit.repository.WorkingTree;
@@ -46,7 +46,7 @@ import com.google.common.base.Preconditions;
  * @see Add
  */
 @Parameters(commandNames = "status", commandDescription = "Show the working tree status")
-public class Status implements CLICommand {
+public class Status extends AbstractCommand {
 
     @Parameter(names = "--color", description = "Whether to apply colored output. Possible values are auto|never|always.", converter = ColorArg.Converter.class)
     private ColorArg coloredOutput = ColorArg.auto;
@@ -64,7 +64,7 @@ public class Status implements CLICommand {
      * @see org.geogit.cli.CLICommand#run(org.geogit.cli.GeogitCLI)
      */
     @Override
-    public void run(GeogitCLI cli) throws Exception {
+    public void runInternal(GeogitCLI cli) throws Exception {
         if (cli.getGeogit() == null) {
             cli.getConsole().println("Not a geogit repository: " + cli.getPlatform().pwd());
             return;

@@ -42,6 +42,19 @@ public class PGImport extends AbstractPGCommand implements CLICommand {
     public boolean all = false;
 
     /**
+     * appends or replaces existing features, instead of removing existent table and then creating a
+     * new one
+     */
+    @Parameter(names = { "-a", "--append" }, description = "Append features to table instead of overwriting it completely")
+    boolean append;
+
+    /**
+     * Destination path to add features to. Only allowed when importing a single table
+     */
+    @Parameter(names = { "-d", "--dest" }, description = "Table/feature type to import to")
+    String destTable;
+
+    /**
      * Executes the import command using the provided options.
      * 
      * @param cli
@@ -79,7 +92,8 @@ public class PGImport extends AbstractPGCommand implements CLICommand {
 
             ProgressListener progressListener = cli.getProgressListener();
             cli.getGeogit().command(ImportOp.class).setAll(all).setTable(table)
-                    .setDataStore(dataStore).setProgressListener(progressListener).call();
+                    .setDestinationPath(destTable).setOverwrite(!append).setDataStore(dataStore)
+                    .setProgressListener(progressListener).call();
 
             cli.getConsole().println("Import successful.");
 
@@ -105,6 +119,13 @@ public class PGImport extends AbstractPGCommand implements CLICommand {
                 break;
             case UNABLE_TO_INSERT:
                 cli.getConsole().println("Unable to insert features into the working tree.");
+                break;
+            case UNMATCHING_FEATURE_TYPES:
+                cli.getConsole().println("Source and destination feature types do not match.");
+                break;
+            case IMPORTING_MULTIPLE_TABLES_TO_SINGLE_FEATURE_TYPE:
+                cli.getConsole().println(
+                        "Destination feature type can only be used when importing a single table.");
                 break;
             default:
                 break;
