@@ -20,7 +20,15 @@ Scenario: Try to show the content of a feature.
      Then the response should contain "1000"
       And the response should contain "POINT (1 1)"
       And the response should contain "StringProp1_1"
-     
+
+Scenario: Try to show the content of a feature in the working tree.
+    Given I have a repository
+      And I have 6 unstaged features
+     When I run the command "cat WORK_HEAD:Points/Points.1"
+     Then the response should contain "1000"
+      And the response should contain "POINT (1 1)"
+      And the response should contain "StringProp1_1"
+           
 Scenario: Try to show the content of HEAD.
     Given I have a repository
       And I stage 6 features
