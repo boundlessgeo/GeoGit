@@ -26,6 +26,6 @@ Scenario: Try to show the content of HEAD.
       And I stage 6 features
      When I run the command "commit -m TestCommit"
      When I run the command "cat HEAD"
-     Then the response should contain "Test"
-      And the response should contain "RevPerson"
-      And the response should contain "Points"
+     Then the response should contain "COMMIT"
+      And the response should contain "John Doe <JohnDoe@example.com>"
+      And the response should contain "timestamp"       
