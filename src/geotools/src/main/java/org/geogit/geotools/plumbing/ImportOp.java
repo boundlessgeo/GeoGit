@@ -9,11 +9,11 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevTree;
-import org.geogit.api.plumbing.ResolveFeatureType;
 import org.geogit.api.plumbing.ResolveTreeish;
 import org.geogit.geotools.plumbing.GeoToolsOpException.StatusCode;
 import org.geogit.repository.WorkingTree;
@@ -22,6 +22,7 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.opengis.feature.Feature;
+import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.type.Name;
 import org.opengis.util.ProgressListener;
 
@@ -49,7 +50,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
 
     private WorkingTree workTree;
 
-    private boolean overwrite;
+    private boolean overwrite = true;
 
     /**
      * Constructs a new import operation with the given working tree.
@@ -91,13 +92,6 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             throw new GeoToolsOpException(StatusCode.UNABLE_TO_GET_NAMES);
         }
 
-        if (destPath != null && !destPath.isEmpty()) {
-            if (typeNames.size() > 1 && all) {
-                throw new GeoToolsOpException(
-                        StatusCode.IMPORTING_MULTIPLE_TABLES_TO_SINGLE_FEATURE_TYPE);
-            }
-        }
-
         for (Name typeName : typeNames) {
             if (!all && !table.equals(typeName.toString()))
                 continue;
@@ -122,38 +116,37 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             NodeRef.checkValidPath(destPath);
 
             Optional<ObjectId> tree = command(ResolveTreeish.class).setTreeish(destPath).call();
-            if (tree.isPresent()) {
-                Optional<RevFeatureType> currentFeatureType = command(ResolveFeatureType.class)
-                        .setFeatureType(destPath).call();
-                if (currentFeatureType.isPresent()) {// Check feature types match
-                    if (!overwrite && !currentFeatureType.equals(revType)) {
-                        throw new GeoToolsOpException(StatusCode.UNMATCHING_FEATURE_TYPES);
+            if (!overwrite && tree.isPresent()) {
+                SimpleFeatureIterator featureIterator = features.features();
+                while (featureIterator.hasNext()) {
+                    SimpleFeature feature = featureIterator.next();
+                    String path = NodeRef.appendChild(destPath, feature.getID());
+                    Optional<Node> node = workTree.findUnstaged(path);
+                    if (!node.isPresent()) {
+                        workTree.insert(destPath, feature);
                     }
                 }
-            }
-
-            final SimpleFeatureIterator featureIterator = features.features();
-
-            Iterator<Feature> iterator = new AbstractIterator<Feature>() {
-                @Override
-                protected Feature computeNext() {
-                    if (!featureIterator.hasNext()) {
-                        return super.endOfData();
+            } else {
+                final SimpleFeatureIterator featureIterator = features.features();
+                Iterator<Feature> iterator = new AbstractIterator<Feature>() {
+                    @Override
+                    protected Feature computeNext() {
+                        if (!featureIterator.hasNext()) {
+                            return super.endOfData();
+                        }
+                        return featureIterator.next();
                     }
-                    return featureIterator.next();
+                };
+                ProgressListener progressListener = getProgressListener();
+                try {
+                    Integer collectionSize = features.size();
+                    workTree.insert(destPath, iterator, true, progressListener, null,
+                            collectionSize);
+                } catch (Exception e) {
+                    throw new GeoToolsOpException(StatusCode.UNABLE_TO_INSERT);
+                } finally {
+                    featureIterator.close();
                 }
-            };
-            ProgressListener progressListener = getProgressListener();
-            try {
-                Integer collectionSize = features.size();
-                if (overwrite) {
-                    workTree.delete(destPath);
-                }
-                workTree.insert(destPath, iterator, true, progressListener, null, collectionSize);
-            } catch (Exception e) {
-                throw new GeoToolsOpException(StatusCode.UNABLE_TO_INSERT);
-            } finally {
-                featureIterator.close();
             }
         }
         if (!foundTable) {
@@ -200,10 +193,10 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
 
     /**
      * 
-     * @param overwrite If this is true, the current feature type will be overwritten if it exists.
-     *        That means that only the features imported will be present in the feature type. If
-     *        this value is false, the feature type is not previously removed, and new features are
-     *        appended. Howver, if a feature with the same id exists, it will be replaced.
+     * @param overwrite If this is true, existing features will be overwritten in case they exist
+     *        and have the same path and Id than the features to import. If this is false, existing
+     *        features will not be overwritten, and an exception will be thrown if trying to import
+     *        a feature into a path that already contains another one with the same Id
      * @return {@code this}
      */
     public ImportOp setOverwrite(boolean overwrite) {
@@ -213,10 +206,8 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
 
     /**
      * 
-     * @param destPath the name of the featuretype to import to. If not provided, it will be taken
-     *        from the feature type of the table to import. It can only be used when importing one
-     *        single table, whether by passing the name of the table to import or setting the
-     *        command to import all tables on a datasource with just one single table
+     * @param destPath the path to import to to. If not provided, it will be taken from the feature
+     *        type of the table to import.
      */
     public ImportOp setDestinationPath(String destPath) {
         this.destPath = destPath;
