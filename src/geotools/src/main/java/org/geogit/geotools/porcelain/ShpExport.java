@@ -45,7 +45,7 @@ import com.google.common.base.Preconditions;
 @Parameters(commandNames = "export", commandDescription = "Export to Shapefile")
 public class ShpExport extends AbstractShpCommand implements CLICommand {
 
-    @Parameter(description = "<featureType> <shapefile>", arity = 2)
+    @Parameter(description = "<path> <shapefile>", arity = 2)
     public List<String> args;
 
     @Parameter(names = { "--overwrite", "-o" }, description = "Overwrite output file")
