@@ -62,7 +62,7 @@ public class Commit extends AbstractCommand implements CLICommand {
 
         final GeoGIT geogit = cli.getGeogit();
 
-        Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isAnsiSupported());
+        Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isANSISupported());
 
         RevCommit commit;
         try {

@@ -66,7 +66,7 @@ public class GeogitConsole {
         consoleReader.setPaginationEnabled(true);
         consoleReader.setHistoryEnabled(true);
         // needed for CTRL+C not to let the console broken
-        consoleReader.getTerminal().setEchoEnabled(true);
+        consoleReader.getTerminal().enableEcho();
 
         final GeogitCLI cli = new GeogitCLI(consoleReader);
         final JCommander globalCommandParser = cli.newCommandParser();
@@ -109,7 +109,7 @@ public class GeogitConsole {
                 cli.close();
             } finally {
                 try {
-                    terminal.restore();
+                    terminal.disableEcho();
                 } catch (Exception e) {
                     throw Throwables.propagate(e);
                 }
