@@ -151,7 +151,7 @@ public class Status implements CLICommand {
             useColor = true;
             break;
         default:
-            useColor = console.getTerminal().isAnsiSupported();
+            useColor = console.getTerminal().isANSISupported();
         }
 
         Ansi ansi = AnsiDecorator.newAnsi(useColor, sb);

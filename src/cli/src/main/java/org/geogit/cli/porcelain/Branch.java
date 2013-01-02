@@ -128,7 +128,7 @@ public class Branch extends AbstractCommand implements CLICommand {
             useColor = true;
             break;
         default:
-            useColor = terminal.isAnsiSupported();
+            useColor = terminal.isANSISupported();
         }
 
         final Ref currentHead = geogit.command(RefParse.class).setName(Ref.HEAD).call().get();

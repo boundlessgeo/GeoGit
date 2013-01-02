@@ -141,7 +141,7 @@ public class Log extends AbstractCommand implements CLICommand {
             useColor = true;
             break;
         default:
-            useColor = terminal.isAnsiSupported();
+            useColor = terminal.isANSISupported();
         }
 
         if (!log.hasNext()) {

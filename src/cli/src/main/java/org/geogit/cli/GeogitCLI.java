@@ -28,6 +28,7 @@ import org.geogit.api.plumbing.ResolveGeogitDir;
 import org.geotools.util.DefaultProgressListener;
 import org.geotools.util.logging.Logging;
 import org.opengis.util.ProgressListener;
+import org.python.core.exceptions;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -206,7 +207,7 @@ public class GeogitCLI {
         try {
             consoleReader = new ConsoleReader(System.in, System.out);
             // needed for CTRL+C not to let the console broken
-            consoleReader.getTerminal().setEchoEnabled(true);
+            consoleReader.getTerminal().enableEcho();
         } catch (Exception e) {
             throw Throwables.propagate(e);
         }
@@ -219,7 +220,7 @@ public class GeogitCLI {
             cli.close();
         } finally {
             try {
-                consoleReader.getTerminal().restore();
+                consoleReader.getTerminal().disableEcho();
             } catch (Exception e) {
                 e.printStackTrace();
                 exitCode = -1;

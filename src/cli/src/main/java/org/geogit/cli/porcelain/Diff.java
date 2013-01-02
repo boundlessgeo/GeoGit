@@ -136,7 +136,7 @@ public class Diff extends AbstractCommand implements CLICommand {
         @Override
         public void print(GeoGIT geogit, ConsoleReader console, DiffEntry entry) throws IOException {
 
-            Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isAnsiSupported());
+            Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isANSISupported());
 
             final NodeRef newObject = entry.getNewObject();
             final NodeRef oldObject = entry.getOldObject();
