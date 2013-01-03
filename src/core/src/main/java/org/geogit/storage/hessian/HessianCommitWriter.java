@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevCommit;
+import org.geogit.api.RevObject;
 import org.geogit.api.RevPerson;
 import org.geogit.storage.ObjectWriter;
 
@@ -20,28 +21,15 @@ import com.caucho.hessian.io.Hessian2Output;
  */
 class HessianCommitWriter extends HessianRevWriter implements ObjectWriter<RevCommit> {
 
-    private RevCommit commit;
-
-    /**
-     * Constructs a new {@code HessianCommitWriter} with the given {@link RevCommit}.
-     * 
-     * @param commit the commit to write
-     */
-    public HessianCommitWriter(final RevCommit commit) {
-        this.commit = commit;
-    }
-
     /**
      * Writes the commit to the provided output stream.
-     * 
-     * @param out the stream to write to
      */
     @Override
-    public void write(OutputStream out) throws IOException {
+    public void write(RevCommit commit, OutputStream out) throws IOException {
         Hessian2Output hout = new Hessian2Output(out);
 
         hout.startMessage();
-        hout.writeInt(BlobType.COMMIT.getValue());
+        hout.writeInt(RevObject.TYPE.COMMIT.value());
 
         writeObjectId(hout, commit.getTreeId());
 
@@ -54,11 +42,7 @@ class HessianCommitWriter extends HessianRevWriter implements ObjectWriter<RevCo
         writePerson(hout, commit.getAuthor());
         writePerson(hout, commit.getCommitter());
         hout.writeString(commit.getMessage());
-        long timestamp = commit.getTimestamp();
-        if (timestamp <= 0) {
-            timestamp = System.currentTimeMillis();
-        }
-        hout.writeLong(timestamp);
+        hout.writeLong(commit.getTimestamp());
 
         hout.completeMessage();
 

@@ -9,6 +9,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
+import javax.annotation.Nullable;
+
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
@@ -17,7 +19,6 @@ import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
 import org.geogit.api.RevTreeBuilder;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.ObjectSerialisingFactory;
 import org.geogit.storage.StagingDatabase;
 
 import com.google.common.base.Optional;
@@ -41,8 +42,6 @@ import com.google.inject.Inject;
  */
 public class WriteBack extends AbstractGeoGitOp<ObjectId> {
 
-    private final ObjectSerialisingFactory serialFactory;
-
     private final ObjectDatabase odb;
 
     private final StagingDatabase index;
@@ -62,20 +61,20 @@ public class WriteBack extends AbstractGeoGitOp<ObjectId> {
 
     private String ancestorPath;
 
+    private Optional<ObjectId> metadataId;
+
     /**
      * Constructs a new {@code WriteBack} operation with the given parameters.
      * 
      * @param odb the object database to use
      * @param index the staging database to use
-     * @param serialFactory the serialization factory
      */
     @Inject
-    public WriteBack(ObjectDatabase odb, StagingDatabase index,
-            ObjectSerialisingFactory serialFactory) {
+    public WriteBack(ObjectDatabase odb, StagingDatabase index) {
         this.odb = odb;
         this.index = index;
         this.targetdb = odb;
-        this.serialFactory = serialFactory;
+        this.metadataId = Optional.absent();
     }
 
     /**
@@ -167,7 +166,8 @@ public class WriteBack extends AbstractGeoGitOp<ObjectId> {
         ObjectDatabase targetDb = indexDb ? index : odb;
         RevTreeBuilder root = resolveAncestor();
 
-        return writeBack(root, ancestorPath, tree, childPath, targetDb);
+        return writeBack(root, ancestorPath, tree, childPath, targetDb,
+                metadataId.or(ObjectId.NULL));
     }
 
     /**
@@ -187,51 +187,63 @@ public class WriteBack extends AbstractGeoGitOp<ObjectId> {
     }
 
     private ObjectId writeBack(RevTreeBuilder ancestor, final String ancestorPath,
-            final RevTree childTree, final String childPath, final ObjectDatabase targetDatabase) {
+            final RevTree childTree, final String childPath, final ObjectDatabase targetDatabase,
+            ObjectId metadataId) {
 
         final ObjectId treeId = childTree.getId();
-        targetDatabase.put(treeId, serialFactory.createRevTreeWriter(childTree));
+        targetDatabase.put(childTree);
 
         final boolean isDirectChild = NodeRef.isDirectChild(ancestorPath, childPath);
         if (isDirectChild) {
-            ObjectId metadataId = ObjectId.NULL;
             ancestor.put(new Node(childPath, treeId, metadataId, TYPE.TREE));
             RevTree newAncestor = ancestor.build();
-            targetDatabase.put(newAncestor.getId(), serialFactory.createRevTreeWriter(newAncestor));
+            targetDatabase.put(newAncestor);
             return newAncestor.getId();
         }
 
         final String parentPath = NodeRef.parentPath(childPath);
-        Optional<Node> parentRef = getTreeChild(ancestor, parentPath);
+        Optional<NodeRef> parentRef = getTreeChild(ancestor, parentPath);
         RevTreeBuilder parentBuilder;
+        ObjectId parentMetadataId = ObjectId.NULL;
         if (parentRef.isPresent()) {
-            ObjectId parentId = parentRef.get().getObjectId();
+            ObjectId parentId = parentRef.get().objectId();
+            parentMetadataId = parentRef.get().getMetadataId();
             parentBuilder = getTree(parentId).builder(targetdb);
         } else {
             parentBuilder = RevTree.EMPTY.builder(targetDatabase);
         }
 
-        parentBuilder.put(new Node(NodeRef.nodeFromPath(childPath), treeId, ObjectId.NULL,
-                TYPE.TREE));
+        parentBuilder.put(new Node(NodeRef.nodeFromPath(childPath), treeId, metadataId, TYPE.TREE));
         RevTree parent = parentBuilder.build();
 
-        return writeBack(ancestor, ancestorPath, parent, parentPath, targetDatabase);
+        return writeBack(ancestor, ancestorPath, parent, parentPath, targetDatabase,
+                parentMetadataId);
     }
 
     private RevTree getTree(ObjectId treeId) {
         if (treeId.isNull()) {
             return RevTree.EMPTY;
         }
-        RevTree revTree = targetdb.get(treeId, serialFactory.createRevTreeReader());
+        RevTree revTree = targetdb.getTree(treeId);
         return revTree;
     }
 
-    private Optional<Node> getTreeChild(RevTreeBuilder parent, String childPath) {
+    private Optional<NodeRef> getTreeChild(RevTreeBuilder parent, String childPath) {
         RevTree realParent = parent.build();
         FindTreeChild cmd = command(FindTreeChild.class).setIndex(true).setParent(realParent)
                 .setChildPath(childPath);
 
-        return cmd.call();
+        Optional<NodeRef> nodeRef = cmd.call();
+        return nodeRef;
+    }
+
+    /**
+     * @param metadataId the (optional) metadata id for the resulting tree ref
+     * @return
+     */
+    public WriteBack setMetadataId(@Nullable ObjectId metadataId) {
+        this.metadataId = Optional.fromNullable(metadataId);
+        return this;
     }
 
 }

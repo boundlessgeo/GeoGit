@@ -12,7 +12,6 @@ import java.util.TreeSet;
 
 import org.geogit.storage.NodeStorageOrder;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.hessian.HessianFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -178,9 +177,7 @@ public abstract class RevTreeImpl extends AbstractRevObject implements RevTree {
 
     @Override
     public RevTreeBuilder builder(ObjectDatabase target) {
-        // TODO: new HessianFactory() will be removed once SerializationFactory is known to
-        // ObjectDatabase
-        return new RevTreeBuilder(target, new HessianFactory(), this);
+        return new RevTreeBuilder(target, this);
     }
 
     @Override
@@ -188,5 +185,39 @@ public abstract class RevTreeImpl extends AbstractRevObject implements RevTree {
         Preconditions.checkState(!buckets().isPresent());
         final ImmutableList<Node> empty = ImmutableList.of();
         return Iterators.concat(trees().or(empty).iterator(), features().or(empty).iterator());
+    }
+
+    @Override
+    public String toString() {
+        final int nSubtrees;
+        if (trees().isPresent()) {
+            nSubtrees = trees().get().size();
+        } else {
+            nSubtrees = 0;
+        }
+        final int nBuckets;
+        if (buckets().isPresent()) {
+            nBuckets = buckets().get().size();
+        } else {
+            nBuckets = 0;
+        }
+        final int nFeatures;
+        if (features().isPresent()) {
+            nFeatures = features().get().size();
+        } else {
+            nFeatures = 0;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("Tree[");
+        builder.append(getId().toString());
+        builder.append("; subtrees=");
+        builder.append(nSubtrees);
+        builder.append(", buckets=");
+        builder.append(nBuckets);
+        builder.append(", features=");
+        builder.append(nFeatures);
+        builder.append("]");
+        return builder.toString();
     }
 }

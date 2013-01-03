@@ -23,8 +23,6 @@ import com.beust.jcommander.Parameters;
  * 
  * PostGIS CLI proxy for {@link ImportOp}
  * 
- * @author groldan
- * @author jgarrett
  * @see ImportOp
  */
 @Parameters(commandNames = "import", commandDescription = "Import Shapefile")
@@ -89,7 +87,8 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
                     cli.getConsole().println("Unable to insert features into the working tree.");
                     break;
                 default:
-                    break;
+                    cli.getConsole()
+                            .println("Import failed with exception: " + e.statusCode.name());
                 }
             } finally {
                 dataStore.dispose();

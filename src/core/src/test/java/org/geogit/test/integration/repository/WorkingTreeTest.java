@@ -9,26 +9,31 @@ import static org.geogit.api.NodeRef.appendChild;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.xml.namespace.QName;
-
 import org.geogit.api.Node;
+import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.RevFeatureType;
+import org.geogit.api.plumbing.FindTreeChild;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.repository.WorkingTree;
 import org.geogit.test.integration.RepositoryTestCase;
+import org.geotools.feature.NameImpl;
 import org.geotools.util.NullProgressListener;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.opengis.feature.Feature;
 import org.opengis.feature.type.Name;
+
+import com.google.common.base.Optional;
 
 /**
  *
@@ -49,8 +54,8 @@ public class WorkingTreeTest extends RepositoryTestCase {
     public void testInsertSingle() throws Exception {
         Name name = points1.getType().getName();
         String parentPath = name.getLocalPart();
-        Node ref = workTree.insert(parentPath, points1);
-        ObjectId objectId = ref.getObjectId();
+        NodeRef ref = workTree.insert(parentPath, points1);
+        ObjectId objectId = ref.objectId();
 
         assertEquals(objectId, workTree.findUnstaged(appendChild(pointsName, idP1)).get()
                 .getObjectId());
@@ -334,8 +339,7 @@ public class WorkingTreeTest extends RepositoryTestCase {
 
         Name typeName = points1.getName();
 
-        workTree.delete(new QName(typeName.getNamespaceURI(), typeName.getLocalPart()), null,
-                deleteFeatures.iterator());
+        workTree.delete(typeName, null, deleteFeatures.iterator());
 
         assertFalse(workTree.findUnstaged(appendChild(pointsName, idP1)).isPresent());
         assertTrue(workTree.findUnstaged(appendChild(pointsName, idP2)).isPresent());
@@ -360,15 +364,13 @@ public class WorkingTreeTest extends RepositoryTestCase {
 
         Name typeName = points1.getName();
 
-        workTree.delete(new QName(typeName.getNamespaceURI(), typeName.getLocalPart()), null,
-                deleteFeatures.iterator());
+        workTree.delete(typeName, null, deleteFeatures.iterator());
 
         assertTrue(workTree.findUnstaged(appendChild(pointsName, idP1)).isPresent());
         assertTrue(workTree.findUnstaged(appendChild(pointsName, idP2)).isPresent());
         assertFalse(workTree.findUnstaged(appendChild(pointsName, idP3)).isPresent());
     }
 
-    @Ignore
     @Test
     public void testDeleteFeatureType() throws Exception {
         List<Feature> featureList = new LinkedList<Feature>();
@@ -394,7 +396,7 @@ public class WorkingTreeTest extends RepositoryTestCase {
         assertTrue(workTree.findUnstaged(appendChild(linesName, idL2)).isPresent());
         assertTrue(workTree.findUnstaged(appendChild(linesName, idL3)).isPresent());
 
-        workTree.delete(new QName(pointsName));
+        workTree.delete(new NameImpl(pointsName));
 
         assertFalse(workTree.findUnstaged(appendChild(pointsName, idP1)).isPresent());
         assertFalse(workTree.findUnstaged(appendChild(pointsName, idP2)).isPresent());
@@ -408,8 +410,7 @@ public class WorkingTreeTest extends RepositoryTestCase {
     public void testHasRoot() throws Exception {
         insert(points1);
         Name typeName = points1.getName();
-        assertFalse(workTree
-                .hasRoot(new QName(typeName.getNamespaceURI(), typeName.getLocalPart())));
+        assertFalse(workTree.hasRoot(typeName));
     }
 
     @Test
@@ -474,16 +475,72 @@ public class WorkingTreeTest extends RepositoryTestCase {
         workTree.insert(linesName, featureList.iterator(), false, new NullProgressListener(), null,
                 3);
 
-        List<QName> featureTypes = workTree.getFeatureTypeNames();
+        List<Name> featureTypes = workTree.getFeatureTypeNames();
 
         assertEquals(2, featureTypes.size());
 
         List<String> featureTypeNames = new LinkedList<String>();
-        for (QName name : featureTypes) {
+        for (Name name : featureTypes) {
             featureTypeNames.add(name.getLocalPart());
         }
 
         assertTrue(featureTypeNames.contains(pointsName));
         assertTrue(featureTypeNames.contains(linesName));
+    }
+
+    @Test
+    public void testCreateTypeTreeExisting() throws Exception {
+        insert(points1);
+        try {
+            workTree.createTypeTree(pointsName, pointsType);
+            fail("expected IAE on existing type tree");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("already exists"));
+        }
+    }
+
+    @Test
+    public void testCreateTypeTree() throws Exception {
+        NodeRef treeRef = workTree.createTypeTree("points2", pointsType);
+        assertNotNull(treeRef);
+        assertEquals("points2", treeRef.path());
+        assertEquals("", treeRef.getParentPath());
+        assertTrue(treeRef.getNode().getMetadataId().isPresent());
+        assertSame(treeRef.getMetadataId(), treeRef.getNode().getMetadataId().get());
+
+        RevFeatureType featureType = repo.getIndex().getDatabase()
+                .getFeatureType(treeRef.getMetadataId());
+        assertEquals(pointsType, featureType.type());
+    }
+
+    @Test
+    public void testCreateTypeNestedNonExistingParent() throws Exception {
+        NodeRef treeRef = workTree.createTypeTree("path/to/nested/type", pointsType);
+        assertNotNull(treeRef);
+        assertEquals("path/to/nested/type", treeRef.path());
+        assertEquals("path/to/nested", treeRef.getParentPath());
+        assertTrue(treeRef.getNode().getMetadataId().isPresent());
+        assertSame(treeRef.getMetadataId(), treeRef.getNode().getMetadataId().get());
+
+        RevFeatureType featureType = repo.getIndex().getDatabase()
+                .getFeatureType(treeRef.getMetadataId());
+        assertEquals(pointsType, featureType.type());
+    }
+
+    @Test
+    public void testCreateTypeTreeAutomaticallyWhenInsertingWitNoExistingTypeTree()
+            throws Exception {
+
+        insert(points1, points2);
+        Optional<NodeRef> treeRef = repo.command(FindTreeChild.class).setChildPath(pointsName)
+                .setIndex(true).setParent(workTree.getTree()).call();
+        assertTrue(treeRef.isPresent());
+        assertTrue(treeRef.get().getNode().getMetadataId().isPresent());
+        assertFalse(treeRef.get().getNode().getMetadataId().get().isNull());
+
+        RevFeatureType featureType = repo.getIndex().getDatabase()
+                .getFeatureType(treeRef.get().getMetadataId());
+        assertEquals(pointsType, featureType.type());
+
     }
 }

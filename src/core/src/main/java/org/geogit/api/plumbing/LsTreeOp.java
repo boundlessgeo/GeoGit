@@ -9,7 +9,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.util.Iterator;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
@@ -27,13 +26,20 @@ import com.google.common.collect.Iterators;
 import com.google.inject.Inject;
 
 /**
- * List index contents
- * 
- * @author volaya
- * 
+ * List the contents of a {@link RevTree tree} object as an Iterator&lt;{@link NodeRef}&gt;, using
+ * the sepecified {@link Strategy strategy} to indicate what to return.
+ * <p>
+ * The tree to traverse is given as a {@link #setReference(String) ref spec}, as supported by
+ * {@link RevParse#setRefSpec(String) RevParse} and must resolve to a tree object. If no ref spec is
+ * specified, the root of the current working tree is assumed.
  */
 public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
 
+    /**
+     * Enumeration of the possible results of the {@link LsTreeOp} operation, indicating whether to
+     * return the recursive contents of a tree or not, and whether to return feature and/or tree
+     * child references.
+     */
     public enum Strategy {
         /**
          * Default ls strategy, list the all direct child entries of a tree
@@ -103,6 +109,8 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
             ref = Ref.WORK_HEAD;
         }
 
+        ObjectId parentObjectId = ObjectId.NULL;
+
         Optional<RevObject> revObject = command(RevObjectParse.class).setRefSpec(ref).call(
                 RevObject.class);
 
@@ -113,10 +121,11 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
             }
             // let's try to see if it is a feature type or feature in the working tree
             NodeRef.checkValidPath(ref);
-            Optional<Node> treeRef = command(FindTreeChild.class).setParent(workTree.getTree())
+            Optional<NodeRef> treeRef = command(FindTreeChild.class).setParent(workTree.getTree())
                     .setChildPath(ref).call();
             Preconditions.checkArgument(treeRef.isPresent(), "Invalid reference: %s", ref);
-            ObjectId treeId = treeRef.get().getObjectId();
+            ObjectId treeId = treeRef.get().objectId();
+            parentObjectId = treeRef.get().getMetadataId();
             revObject = command(RevObjectParse.class).setObjectId(treeId).call(RevObject.class);
         }
 
@@ -158,8 +167,10 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
                 throw new IllegalStateException("Unknown strategy: " + this.strategy);
             }
 
-            // TODO: CHANGE METADATAID
-            DepthTreeIterator iter = new DepthTreeIterator(ref, ObjectId.NULL,
+            final String path = ref.lastIndexOf(':') != -1 ? ref
+                    .substring(ref.lastIndexOf(':') + 1) : "";
+
+            DepthTreeIterator iter = new DepthTreeIterator(path, parentObjectId,
                     (RevTree) revObject.get(), index, iterStrategy);
             return iter;
         default:

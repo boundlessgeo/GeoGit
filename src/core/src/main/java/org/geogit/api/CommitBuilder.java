@@ -8,7 +8,7 @@ import java.util.List;
 
 import org.geogit.api.plumbing.HashObject;
 
-import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 public final class CommitBuilder {
 
@@ -29,6 +29,7 @@ public final class CommitBuilder {
     private long timestamp;
 
     public CommitBuilder() {
+        parentIds = ImmutableList.of();
     }
 
     /**
@@ -55,8 +56,9 @@ public final class CommitBuilder {
     /**
      * @param treeId the treeId to set
      */
-    public void setTreeId(ObjectId treeId) {
+    public CommitBuilder setTreeId(ObjectId treeId) {
         this.treeId = treeId;
+        return this;
     }
 
     /**
@@ -69,8 +71,11 @@ public final class CommitBuilder {
     /**
      * @param parentIds the parentIds to set
      */
-    public void setParentIds(List<ObjectId> parentIds) {
-        this.parentIds = parentIds;
+    @SuppressWarnings("unchecked")
+    public CommitBuilder setParentIds(List<ObjectId> parentIds) {
+        this.parentIds = (List<ObjectId>) (parentIds == null ? ImmutableList.of() : ImmutableList
+                .copyOf(parentIds));
+        return this;
     }
 
     /**
@@ -90,15 +95,17 @@ public final class CommitBuilder {
     /**
      * @param author the author to set
      */
-    public void setAuthor(String author) {
+    public CommitBuilder setAuthor(String author) {
         this.author = author;
+        return this;
     }
 
     /**
      * @param email the author's email to set
      */
-    public void setAuthorEmail(String email) {
+    public CommitBuilder setAuthorEmail(String email) {
         this.authorEmail = email;
+        return this;
     }
 
     /**
@@ -118,15 +125,17 @@ public final class CommitBuilder {
     /**
      * @param committer the committer to set
      */
-    public void setCommitter(String committer) {
+    public CommitBuilder setCommitter(String committer) {
         this.committer = committer;
+        return this;
     }
 
     /**
      * @param email the committer's email to set
      */
-    public void setCommitterEmail(String email) {
+    public CommitBuilder setCommitterEmail(String email) {
         this.committerEmail = email;
+        return this;
     }
 
     /**
@@ -139,8 +148,9 @@ public final class CommitBuilder {
     /**
      * @param message the message to set
      */
-    public void setMessage(String message) {
+    public CommitBuilder setMessage(String message) {
         this.message = message;
+        return this;
     }
 
     /**
@@ -154,8 +164,9 @@ public final class CommitBuilder {
      * @param timestamp timestamp, in UTC, of the commit. Let it blank for the builder to auto-set
      *        it at {@link #build()} time
      */
-    public void setTimestamp(long timestamp) {
+    public CommitBuilder setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+        return this;
     }
 
     public RevCommit build() {
@@ -168,7 +179,7 @@ public final class CommitBuilder {
         final RevPerson author = new RevPerson(this.author, authorEmail);
         final RevPerson committer = new RevPerson(this.committer, committerEmail);
         final long timestamp = getTimestamp();
-        final String commitMessage = this.message;
+        final String commitMessage = this.message == null ? "" : this.message;
 
         RevCommit unnnamedCommit = new RevCommit(ObjectId.NULL, treeId, parentIds, author,
                 committer, commitMessage, timestamp);
@@ -176,29 +187,5 @@ public final class CommitBuilder {
 
         return new RevCommit(commitId, treeId, parentIds, author, committer, commitMessage,
                 timestamp);
-    }
-
-    /**
-     * This method is deprecated and should be removed as soon as possible. The only reason to
-     * preserve it is that it _seems_ the hessian commit reader/writers don't produce always the
-     * same contents, and worse, seems to be random. See comments in HessianCommitReader
-     * 
-     * @deprecated use {@link #build()}
-     */
-    @Deprecated
-    public RevCommit build(ObjectId id) {
-        Preconditions.checkNotNull(id);
-        if (treeId == null) {
-            throw new IllegalStateException("No tree id set");
-        }
-
-        final ObjectId treeId = this.treeId;
-        final List<ObjectId> parentIds = this.parentIds;
-        final RevPerson author = new RevPerson(this.author, authorEmail);
-        final RevPerson committer = new RevPerson(this.committer, committerEmail);
-        final long timestamp = getTimestamp();
-        final String commitMessage = this.message;
-
-        return new RevCommit(id, treeId, parentIds, author, committer, commitMessage, timestamp);
     }
 }

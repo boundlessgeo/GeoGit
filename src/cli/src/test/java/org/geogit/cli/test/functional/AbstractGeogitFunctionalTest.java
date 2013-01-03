@@ -23,7 +23,8 @@ import jline.console.ConsoleReader;
 
 import org.geogit.api.GeoGIT;
 import org.geogit.api.GlobalInjectorBuilder;
-import org.geogit.api.Node;
+import org.geogit.api.InjectorBuilder;
+import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Platform;
 import org.geogit.api.porcelain.AddOp;
@@ -106,8 +107,9 @@ public abstract class AbstractGeogitFunctionalTest {
 
         ConsoleReader consoleReader = new ConsoleReader(stdIn, stdOut, new UnsupportedTerminal());
 
-        GlobalInjectorBuilder.builder = new CLITestInjectorBuilder(currentDirectory, homeDirectory);
-        Injector injector = GlobalInjectorBuilder.builder.get();
+        InjectorBuilder injectorBuilder = new CLITestInjectorBuilder(currentDirectory,
+                homeDirectory);
+        Injector injector = injectorBuilder.get();
 
         if (geogit != null) {
             geogit.close();
@@ -116,6 +118,7 @@ public abstract class AbstractGeogitFunctionalTest {
         geogit = new GeoGIT(injector, currentDirectory);
         try {
             geogitCLI = new GeogitCLI(consoleReader);
+            GlobalInjectorBuilder.builder = injectorBuilder;
             geogitCLI.setPlatform(injector.getInstance(Platform.class));
             geogitCLI.setGeogitInjector(injector);
             if (geogit.getRepository() != null) {
@@ -220,8 +223,8 @@ public abstract class AbstractGeogitFunctionalTest {
         final WorkingTree workTree = geogit.getRepository().getWorkingTree();
         Name name = f.getType().getName();
         String parentPath = name.getLocalPart();
-        Node ref = workTree.insert(parentPath, f);
-        ObjectId objectId = ref.getObjectId();
+        NodeRef ref = workTree.insert(parentPath, f);
+        ObjectId objectId = ref.objectId();
         return objectId;
     }
 

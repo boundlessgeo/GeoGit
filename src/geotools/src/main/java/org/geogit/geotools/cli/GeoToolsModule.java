@@ -12,9 +12,9 @@ import com.google.inject.Binder;
 /**
  * Provides bindings for GeoTools command extensions to the GeoGit command line interface.
  * 
- * @author jgarrett
  * @see PGCommandProxy
  * @see ShpCommandProxy
+ * @see SLCommandProxy
  */
 public class GeoToolsModule implements CLIModule {
 
@@ -25,6 +25,7 @@ public class GeoToolsModule implements CLIModule {
     public void configure(Binder binder) {
         binder.bind(PGCommandProxy.class);
         binder.bind(ShpCommandProxy.class);
+        binder.bind(SLCommandProxy.class);
     }
 
 }

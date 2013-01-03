@@ -10,15 +10,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.util.Collections;
 import java.util.List;
 
-import javax.annotation.Nullable;
-
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 
 /**
  * A reference to a commit in the DAG.
- * 
- * @author groldan
  * 
  */
 public class RevCommit extends AbstractRevObject {
@@ -61,13 +57,13 @@ public class RevCommit extends AbstractRevObject {
      * @param timestamp the timestamp of this commit
      */
     public RevCommit(final ObjectId id, ObjectId treeId, List<ObjectId> parentIds,
-            RevPerson author, RevPerson committer, @Nullable String message, long timestamp) {
+            RevPerson author, RevPerson committer, String message, long timestamp) {
         this(id);
         checkNotNull(treeId);
         checkNotNull(parentIds);
         checkNotNull(author);
         checkNotNull(committer);
-
+        checkNotNull(message);
         this.treeId = treeId;
         this.parentIds = parentIds;
         this.author = author;

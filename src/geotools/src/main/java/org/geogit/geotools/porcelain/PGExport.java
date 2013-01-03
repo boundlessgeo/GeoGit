@@ -7,16 +7,18 @@ package org.geogit.geotools.porcelain;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.sql.Connection;
 import java.util.Arrays;
 import java.util.List;
 
+import org.geogit.api.GeoGIT;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevObject;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
+import org.geogit.api.plumbing.FindTreeChild;
+import org.geogit.api.plumbing.ResolveTreeish;
 import org.geogit.api.plumbing.RevObjectParse;
 import org.geogit.api.plumbing.diff.DepthTreeIterator;
 import org.geogit.api.plumbing.diff.DepthTreeIterator.Strategy;
@@ -31,7 +33,6 @@ import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.data.simple.SimpleFeatureStore;
 import org.geotools.feature.NameImpl;
 import org.geotools.feature.simple.SimpleFeatureTypeImpl;
-import org.geotools.jdbc.JDBCDataStore;
 import org.opengis.feature.simple.SimpleFeatureType;
 
 import com.beust.jcommander.Parameter;
@@ -82,17 +83,6 @@ public class PGExport extends AbstractPGCommand implements CLICommand {
             return;
         }
 
-        if (dataStore instanceof JDBCDataStore) {
-            Connection con = null;
-            try {
-                con = ((JDBCDataStore) dataStore).getDataSource().getConnection();
-            } catch (Exception e) {
-                throw new ConnectException();
-            }
-
-            ((JDBCDataStore) dataStore).closeSafe(con);
-        }
-
         if (!Arrays.asList(dataStore.getTypeNames()).contains(tableName)) {
             SimpleFeatureType featureType;
             try {
@@ -118,7 +108,8 @@ public class PGExport extends AbstractPGCommand implements CLICommand {
         if (featureSource instanceof SimpleFeatureStore) {
             SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
             cli.getGeogit().command(ExportOp.class).setFeatureTypeName(featureTypeName)
-                    .setFeatureStore(featureStore).call();
+                    .setFeatureStore(featureStore).setProgressListener(cli.getProgressListener())
+                    .call();
 
             cli.getConsole().println(featureTypeName + " exported successfully to " + tableName);
         } else {
@@ -137,28 +128,36 @@ public class PGExport extends AbstractPGCommand implements CLICommand {
             refspec = "WORK_HEAD:" + featureTypeName;
         }
 
-        Optional<RevObject> revObject = cli.getGeogit().command(RevObjectParse.class)
-                .setRefSpec(refspec).call(RevObject.class);
+        final GeoGIT geogit = cli.getGeogit();
+
+        Optional<ObjectId> rootTreeId = geogit.command(ResolveTreeish.class)
+                .setTreeish(refspec.split(":")[0]).call();
+        RevTree rootTree = geogit.getRepository().getTree(rootTreeId.get());
+        Optional<NodeRef> featureTypeTree = geogit.command(FindTreeChild.class)
+                .setChildPath(featureTypeName).setParent(rootTree).setIndex(true).call();
+        Optional<RevObject> revObject = geogit.command(RevObjectParse.class).setRefSpec(refspec)
+                .call(RevObject.class);
 
         Preconditions.checkArgument(revObject.isPresent(), "Invalid reference: %s", refspec);
         Preconditions.checkArgument(revObject.get().getType() == TYPE.TREE,
                 "%s did not resolve to a tree", refspec);
 
-        ObjectDatabase database = cli.getGeogit().getRepository().getObjectDatabase();
+        ObjectDatabase database = geogit.getRepository().getObjectDatabase();
 
-        DepthTreeIterator iter = new DepthTreeIterator("", ObjectId.NULL,
+        DepthTreeIterator iter = new DepthTreeIterator("", featureTypeTree.get().getMetadataId(),
                 (RevTree) revObject.get(), database, Strategy.FEATURES_ONLY);
 
         while (iter.hasNext()) {
             NodeRef nodeRef = iter.next();
-            RevFeatureType revFeatureType = cli.getGeogit().command(RevObjectParse.class)
-                    .setObjectId(nodeRef.getMetadataId()).call(RevFeatureType.class).get();            
+            ObjectId metadataId = nodeRef.getMetadataId();
+            RevFeatureType revFeatureType = geogit.command(RevObjectParse.class)
+                    .setObjectId(metadataId).call(RevFeatureType.class).get();
             SimpleFeatureType sft = (SimpleFeatureType) revFeatureType.type();
             SimpleFeatureTypeImpl newSFT = new SimpleFeatureTypeImpl(new NameImpl(tableName),
                     sft.getAttributeDescriptors(), sft.getGeometryDescriptor(), sft.isAbstract(),
                     sft.getRestrictions(), sft.getSuper(), sft.getDescription());
             return newSFT;
-            
+
         }
 
         throw new GeoToolsOpException(StatusCode.NO_FEATURES_FOUND);

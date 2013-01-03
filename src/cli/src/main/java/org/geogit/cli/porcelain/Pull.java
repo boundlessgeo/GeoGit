@@ -32,7 +32,6 @@ import com.beust.jcommander.Parameters;
  * </ul>
  * 
  * @see PullOp
- * @author jgarrett
  */
 @Parameters(commandNames = "pull", commandDescription = "Fetch from and merge with another repository or a local branch")
 public class Pull extends AbstractCommand implements CLICommand {
@@ -55,10 +54,6 @@ public class Pull extends AbstractCommand implements CLICommand {
     @Override
     public void runInternal(GeogitCLI cli) throws Exception {
         checkState(cli.getGeogit() != null, "Not a geogit repository: " + cli.getPlatform().pwd());
-        if (!rebase) {
-            throw new UnsupportedOperationException(
-                    "Merge pull not yet implemented, use --rebase for a rebase pull.");
-        }
 
         PullOp pull = cli.getGeogit().command(PullOp.class);
         pull.setProgressListener(cli.getProgressListener());

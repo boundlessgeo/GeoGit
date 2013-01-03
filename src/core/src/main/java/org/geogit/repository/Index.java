@@ -53,8 +53,6 @@ import com.google.inject.Inject;
  * committed is performed through a diff tree walk comparing the staged changes tree and the
  * repository's head tree.
  * 
- * @author Gabriel Roldan
- * 
  */
 public class Index implements StagingArea {
 
@@ -127,9 +125,13 @@ public class Index implements StagingArea {
      */
     @Override
     public Optional<Node> findStaged(final String path) {
-        Optional<Node> entry = repository.command(FindTreeChild.class).setIndex(true)
+        Optional<NodeRef> entry = repository.command(FindTreeChild.class).setIndex(true)
                 .setParent(getTree()).setChildPath(path).call();
-        return entry;
+        if (entry.isPresent()) {
+            return Optional.of(entry.get().getNode());
+        } else {
+            return Optional.absent();
+        }
     }
 
     /**
@@ -171,6 +173,14 @@ public class Index implements StagingArea {
         while (changes.hasNext()) {
             Map.Entry<String, List<DiffEntry>> pairs = changes.next();
 
+            Optional<NodeRef> typeTreeRef = repository.command(FindTreeChild.class).setIndex(true)
+                    .setParent(getTree()).setChildPath(pairs.getKey()).call();
+
+            ObjectId parentMetadataId = null;
+            if (typeTreeRef.isPresent()) {
+                parentMetadataId = typeTreeRef.get().getMetadataId();
+            }
+
             RevTreeBuilder parentTree = repository.command(FindOrCreateSubtree.class)
                     .setParent(Suppliers.ofInstance(Optional.of(getTree()))).setIndex(true)
                     .setChildPath(pairs.getKey()).call().builder(getDatabase());
@@ -187,6 +197,9 @@ public class Index implements StagingArea {
                 } else if (oldObject == null) {
                     // Add
                     parentTree.put(newObject.getNode());
+                    if (parentMetadataId == null) {
+                        parentMetadataId = newObject.getMetadataId();
+                    }
                 } else {
                     // Modify
                     parentTree.put(newObject.getNode());
@@ -194,8 +207,8 @@ public class Index implements StagingArea {
             }
 
             ObjectId newTree = repository.command(WriteBack.class).setAncestor(getTreeSupplier())
-                    .setChildPath(pairs.getKey()).setToIndex(true).setTree(parentTree.build())
-                    .call();
+                    .setChildPath(pairs.getKey()).setMetadataId(parentMetadataId).setToIndex(true)
+                    .setTree(parentTree.build()).call();
 
             updateStageHead(newTree);
         }
