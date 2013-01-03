@@ -22,7 +22,6 @@ import org.geogit.storage.StagingDatabase;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterators;
 import com.google.inject.Inject;
 
 /**
@@ -130,8 +129,9 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
         final TYPE type = revObject.get().getType();
         switch (type) {
         case FEATURE:
-            NodeRef nodeRef = null;
-            return Iterators.forArray(new NodeRef[] { nodeRef });
+            // Not supported by now. Should use cat or show to describe feature.
+            throw new IllegalArgumentException(
+                    "Reference points to a feature element. Should point to a tree or commit.\nUse cat or show commands to describe a feature");
         case COMMIT:
             RevCommit revCommit = (RevCommit) revObject.get();
             ObjectId treeId = revCommit.getTreeId();
