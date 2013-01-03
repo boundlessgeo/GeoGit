@@ -36,8 +36,8 @@ public class CatObjectTest extends RepositoryTestCase {
         CharSequence desc = geogit.command(CatObject.class).setObject(Suppliers.ofInstance(tree))
                 .call();
         String[] lines = desc.toString().split("\n");
-        assertEquals(numChildren + 2, lines.length);
-        for (int i = 2; i < lines.length; i++) {
+        assertEquals(numChildren + 3, lines.length);
+        for (int i = 3; i < lines.length; i++) {
             String[] tokens = lines[i].split("\t");
             assertEquals(FAKE_ID.toString(), tokens[3].trim());
         }
@@ -51,8 +51,8 @@ public class CatObjectTest extends RepositoryTestCase {
         CharSequence desc = geogit.command(CatObject.class).setObject(Suppliers.ofInstance(tree))
                 .call();
         String[] lines = desc.toString().split("\n");
-        assertEquals(tree.buckets().get().size() + 2, lines.length);
-        for (int i = 2; i < lines.length; i++) {
+        assertEquals(tree.buckets().get().size() + 3, lines.length);
+        for (int i = 3; i < lines.length; i++) {
             String[] tokens = lines[i].split("\t");
             assertEquals(tokens[0].trim(), "BUCKET");
         }
@@ -66,7 +66,6 @@ public class CatObjectTest extends RepositoryTestCase {
             rtb.put(ref);
         }
         return rtb.build();
-
     }
 
     @Test
@@ -77,11 +76,10 @@ public class CatObjectTest extends RepositoryTestCase {
                 .setObject(Suppliers.ofInstance(feature)).call();
         String[] lines = desc.toString().split("\n");
 
-        assertEquals(points1.getProperties().size() + 1, lines.length);
-        assertEquals(Integer.class.getName() + "\t1000", lines[1]);
-        assertEquals(Point.class.getName() + "\tPOINT (1 1)", lines[2]);
-        assertEquals(String.class.getName() + "\tStringProp1_1", lines[3]);
-
+        assertEquals(points1.getProperties().size() + 2, lines.length);
+        assertEquals(Integer.class.getName() + "\t1000", lines[2]);
+        assertEquals(Point.class.getName() + "\tPOINT (1 1)", lines[3]);
+        assertEquals(String.class.getName() + "\tStringProp1_1", lines[4]);
     }
 
 }
