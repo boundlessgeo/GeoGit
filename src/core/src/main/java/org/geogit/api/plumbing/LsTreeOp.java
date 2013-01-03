@@ -106,15 +106,15 @@ public class LsTreeOp extends AbstractGeoGitOp<Iterator<NodeRef>> {
         Optional<RevObject> revObject = command(RevObjectParse.class).setRefSpec(ref).call(
                 RevObject.class);
 
-        if (!revObject.isPresent()) { // let's try to see if it is a feature type or feature in the
-                                      // working tree
+        if (!revObject.isPresent()) {
+            if (ref == Ref.WORK_HEAD) { // we are requesting a listing of the whole working tree but
+                                        // it is empty
+                return Iterators.emptyIterator();
+            }
+            // let's try to see if it is a feature type or feature in the working tree
             NodeRef.checkValidPath(ref);
             Optional<Node> treeRef = command(FindTreeChild.class).setParent(workTree.getTree())
                     .setChildPath(ref).call();
-            if (ref == Ref.WORK_HEAD) { // we are requesting a listing of the whole working tree,
-                                        // but it is empty
-                return Iterators.emptyIterator();
-            }
             Preconditions.checkArgument(treeRef.isPresent(), "Invalid reference: %s", ref);
             ObjectId treeId = treeRef.get().getObjectId();
             revObject = command(RevObjectParse.class).setObjectId(treeId).call(RevObject.class);
