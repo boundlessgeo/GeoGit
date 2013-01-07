@@ -19,6 +19,7 @@ import org.geogit.repository.StagingArea;
 import org.geogit.repository.WorkingTree;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 
 /**
@@ -94,7 +95,11 @@ public class DiffWorkTree extends AbstractGeoGitOp<Iterator<DiffEntry>> {
 
         final String oldVersion = Optional.fromNullable(refSpec).or(Ref.STAGE_HEAD);
 
-        ObjectId headTreeId = command(ResolveTreeish.class).setTreeish(oldVersion).call().get();
+        Optional<ObjectId> optHeadTreeId = command(ResolveTreeish.class).setTreeish(oldVersion)
+                .call();
+        Preconditions.checkArgument(optHeadTreeId.isPresent(),
+                "Refspec %s did not resolve to a tree", oldVersion);
+        ObjectId headTreeId = optHeadTreeId.get();
         final RevTree headTree;
         if (headTreeId.isNull()) {
             headTree = RevTree.EMPTY;
