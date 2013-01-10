@@ -121,7 +121,8 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
                     cli.getConsole().println("Specify --alter or --force, both cannot be set.");
                     break;
                 default:
-                    break;
+                    cli.getConsole()
+                            .println("Import failed with exception: " + e.statusCode.name());
                 }
             } finally {
                 dataStore.dispose();

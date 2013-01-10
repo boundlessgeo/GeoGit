@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.commons.io.FileUtils;
 import org.geogit.api.GeoGIT;
@@ -39,6 +40,8 @@ import cucumber.annotation.en.When;
  *
  */
 public class InitSteps extends AbstractGeogitFunctionalTest {
+
+    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     @cucumber.annotation.After
     public void after() {
@@ -64,32 +67,35 @@ public class InitSteps extends AbstractGeogitFunctionalTest {
     @Then("^it should answer \"([^\"]*)\"$")
     public void it_should_answer_exactly(String expected) throws Throwable {
         expected = expected.replace("${currentdir}", currentDirectory.getAbsolutePath())
-                .toLowerCase();
-        String actual = stdOut.toString().replaceAll("\n", "").trim().toLowerCase();
+                .toLowerCase().replaceAll("\\\\", "/");
+        String actual = stdOut.toString().replaceAll(LINE_SEPARATOR, "").replaceAll("\\\\", "/")
+                .trim().toLowerCase();
         assertEquals(expected, actual);
     }
 
     @Then("^the response should contain \"([^\"]*)\"$")
     public void the_response_should_contain(String expected) throws Throwable {
-        String actual = stdOut.toString().replaceAll("\n", "");
+        String actual = stdOut.toString().replaceAll(LINE_SEPARATOR, "").replaceAll("\\\\", "/");
+        expected.replaceAll("\\\\", "/");
         assertTrue(actual, actual.contains(expected));
     }
 
     @Then("^the response should not contain \"([^\"]*)\"$")
     public void the_response_should_not_contain(String expected) throws Throwable {
-        String actual = stdOut.toString().replaceAll("\n", "");
+        String actual = stdOut.toString().replaceAll(LINE_SEPARATOR, "").replaceAll("\\\\", "/");
+        expected.replaceAll("\\\\", "/");
         assertFalse(actual, actual.contains(expected));
     }
 
     @Then("^the response should contain ([^\"]*) lines$")
     public void the_response_should_contain_x_lines(int lines) throws Throwable {
-        String[] lineStrings = stdOut.toString().split("\n");
+        String[] lineStrings = stdOut.toString().split(LINE_SEPARATOR);
         assertEquals(lines, lineStrings.length);
     }
 
     @Then("^the response should start with \"([^\"]*)\"$")
     public void the_response_should_start_with(String expected) throws Throwable {
-        String actual = stdOut.toString().replaceAll("\n", "");
+        String actual = stdOut.toString().replaceAll(LINE_SEPARATOR, "");
         assertTrue(actual, actual.startsWith(expected));
     }
 
@@ -178,12 +184,12 @@ public class InitSteps extends AbstractGeogitFunctionalTest {
     }
 
     private void setUpDirectories() throws IOException {
-        homeDirectory = new File("target", "fakeHomeDir");
+        homeDirectory = new File("target", "fakeHomeDir" + new Random().nextInt());
         FileUtils.deleteDirectory(homeDirectory);
         assertFalse(homeDirectory.exists());
         assertTrue(homeDirectory.mkdirs());
 
-        currentDirectory = new File("target", "testrepo");
+        currentDirectory = new File("target", "testrepo" + new Random().nextInt());
         FileUtils.deleteDirectory(currentDirectory);
         assertFalse(currentDirectory.exists());
         assertTrue(currentDirectory.mkdirs());
@@ -201,9 +207,51 @@ public class InitSteps extends AbstractGeogitFunctionalTest {
         }
     }
 
+    @Given("^I have staged \"([^\"]*)\"$")
+    public void I_have_staged(String feature) throws Throwable {
+        if (feature.equals("points1")) {
+            insertAndAdd(points1);
+        } else if (feature.equals("points2")) {
+            insertAndAdd(points2);
+        } else if (feature.equals("points3")) {
+            insertAndAdd(points3);
+        } else if (feature.equals("points1_modified")) {
+            insertAndAdd(points1_modified);
+        } else if (feature.equals("lines1")) {
+            insertAndAdd(lines1);
+        } else if (feature.equals("lines2")) {
+            insertAndAdd(lines2);
+        } else if (feature.equals("lines3")) {
+            insertAndAdd(lines3);
+        } else {
+            throw new Exception("Unknown Feature");
+        }
+    }
+
     @Given("^I have 6 unstaged features$")
     public void I_have_6_unstaged_features() throws Throwable {
         insertFeatures();
+    }
+
+    @Given("^I have unstaged \"([^\"]*)\"$")
+    public void I_have_unstaged(String feature) throws Throwable {
+        if (feature.equals("points1")) {
+            insert(points1);
+        } else if (feature.equals("points2")) {
+            insert(points2);
+        } else if (feature.equals("points3")) {
+            insert(points3);
+        } else if (feature.equals("points1_modified")) {
+            insert(points1_modified);
+        } else if (feature.equals("lines1")) {
+            insert(lines1);
+        } else if (feature.equals("lines2")) {
+            insert(lines2);
+        } else if (feature.equals("lines3")) {
+            insert(lines3);
+        } else {
+            throw new Exception("Unknown Feature");
+        }
     }
 
     @Given("^I stage 6 features$")
@@ -211,7 +259,7 @@ public class InitSteps extends AbstractGeogitFunctionalTest {
         insertAndAddFeatures();
     }
 
-    @Given("^I have several commits")
+    @Given("^I have several commits$")
     public void I_have_several_commits() throws Throwable {
         insertAndAdd(points1);
         insertAndAdd(points2);

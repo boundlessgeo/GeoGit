@@ -86,6 +86,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
      * 
      * @return RevTree the new working tree
      */
+    @SuppressWarnings("deprecation")
     @Override
     public RevTree call() {
         if (dataStore == null) {
@@ -117,11 +118,22 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             throw new GeoToolsOpException(StatusCode.ALTER_AND_ALL_DEFINED);
         }
 
+        getProgressListener().started();
+        int tableCount = 0;
         for (Name typeName : typeNames) {
+            tableCount++;
             if (!all && !table.equals(typeName.toString()))
                 continue;
 
             foundTable = true;
+
+            String tableName = String.format("%-16s", typeName.getLocalPart());
+            if (typeName.getLocalPart().length() > 16) {
+                tableName = tableName.substring(0, 13) + "...";
+            }
+            getProgressListener().setDescription(
+                    "Importing " + tableName + " (" + (all ? tableCount : 1) + "/"
+                            + (all ? typeNames.size() : 1) + ")... ");
 
             SimpleFeatureSource featureSource;
             SimpleFeatureCollection features;
@@ -223,6 +235,17 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
                 } finally {
                     featureIterator.close();
                 }
+            };
+
+            try {
+                ProgressListener taskProgress = subProgress(100.f / (all ? typeNames.size() : 1f));
+                Integer collectionSize = features.size();
+                workTree.delete(revType.getName());
+                workTree.insert(treePath, iterator, true, taskProgress, null, collectionSize);
+            } catch (Exception e) {
+                throw new GeoToolsOpException(StatusCode.UNABLE_TO_INSERT);
+            } finally {
+                featureIterator.close();
             }
         }
         if (!foundTable) {
@@ -232,6 +255,8 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
                 throw new GeoToolsOpException(StatusCode.TABLE_NOT_FOUND);
             }
         }
+        getProgressListener().progress(100.f);
+        getProgressListener().complete();
         return workTree.getTree();
     }
 
@@ -318,26 +343,12 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
     }
 
     /**
-     * @return whether or not the all flag has been set
-     */
-    public boolean getAll() {
-        return all;
-    }
-
-    /**
      * @param table if this is set, only the specified table will be imported from the data store
      * @return {@code this}
      */
     public ImportOp setTable(String table) {
         this.table = table;
         return this;
-    }
-
-    /**
-     * @return the table that has been set, or null
-     */
-    public String getTable() {
-        return table;
     }
 
     /**
@@ -390,13 +401,6 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
     public ImportOp setDataStore(DataStore dataStore) {
         this.dataStore = dataStore;
         return this;
-    }
-
-    /**
-     * @return the data store that has been set
-     */
-    public DataStore getDataStore() {
-        return dataStore;
     }
 
 }
