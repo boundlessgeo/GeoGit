@@ -9,11 +9,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.TreeSet;
 
 import jline.UnsupportedTerminal;
 import jline.console.ConsoleReader;
 
+import org.geogit.api.NodeRef;
+import org.geogit.api.ObjectId;
 import org.geogit.api.Platform;
+import org.geogit.api.plumbing.LsTreeOp;
+import org.geogit.api.plumbing.LsTreeOp.Strategy;
 import org.geogit.cli.GeogitCLI;
 import org.geogit.geotools.plumbing.GeoToolsOpException;
 import org.geogit.geotools.plumbing.ImportOp;
@@ -26,6 +33,9 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.opengis.feature.type.Name;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 public class ImportOpTest {
 
@@ -166,6 +176,62 @@ public class ImportOpTest {
         importOp.setDataStore(TestHelper.createTestFactory().createDataStore(null));
         importOp.setAll(true);
         importOp.call();
+    }
+
+    @Test
+    public void testImportNoOverwrite() throws Exception {
+        ImportOp importOp = cli.getGeogit().command(ImportOp.class);
+        importOp.setDataStore(TestHelper.createTestFactory().createDataStore(null));
+        importOp.setAll(false);
+        importOp.setTable("table1");
+        importOp.setOverwrite(false);
+        importOp.call();
+        importOp.call();
+    }
+
+    @Test
+    public void testUncompatibleFeatureTypes() throws Exception {
+        ImportOp importOp = cli.getGeogit().command(ImportOp.class);
+        importOp.setDataStore(TestHelper.createTestFactory().createDataStore(null));
+        importOp.setAll(true);
+        importOp.call();
+        exception.expect(GeoToolsOpException.class);
+    }
+
+    @Test
+    public void testAlter() throws Exception {
+        ImportOp importOp = cli.getGeogit().command(ImportOp.class);
+        importOp.setDataStore(TestHelper.createTestFactory().createDataStore(null));
+        importOp.setAll(true);
+        importOp.setAlter(true);
+        importOp.call();
+        Iterator<NodeRef> features = cli.getGeogit().command(LsTreeOp.class)
+                .setStrategy(Strategy.DEPTHFIRST_ONLY_FEATURES).call();
+        ArrayList<NodeRef> list = Lists.newArrayList(features);
+        assertEquals(3, features);
+        TreeSet<ObjectId> set = Sets.newTreeSet();
+        for (NodeRef node : list) {
+            set.add(node.getMetadataId());
+        }
+        assertEquals(1, set.size());
+    }
+
+    @Test
+    public void testForce() throws Exception {
+        ImportOp importOp = cli.getGeogit().command(ImportOp.class);
+        importOp.setDataStore(TestHelper.createTestFactory().createDataStore(null));
+        importOp.setAll(true);
+        importOp.setForce(true);
+        importOp.call();
+        Iterator<NodeRef> features = cli.getGeogit().command(LsTreeOp.class)
+                .setStrategy(Strategy.DEPTHFIRST_ONLY_FEATURES).call();
+        ArrayList<NodeRef> list = Lists.newArrayList(features);
+        assertEquals(3, features);
+        TreeSet<ObjectId> set = Sets.newTreeSet();
+        for (NodeRef node : list) {
+            set.add(node.getMetadataId());
+        }
+        assertEquals(2, set.size());
     }
 
     @Test

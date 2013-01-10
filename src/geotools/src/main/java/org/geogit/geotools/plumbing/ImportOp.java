@@ -8,13 +8,19 @@ package org.geogit.geotools.plumbing;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.FeatureBuilder;
 import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
-import org.geogit.api.ObjectId;
+import org.geogit.api.Ref;
+import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevTree;
-import org.geogit.api.plumbing.ResolveTreeish;
+import org.geogit.api.plumbing.FindTreeChild;
+import org.geogit.api.plumbing.ResolveFeatureType;
+import org.geogit.api.plumbing.RevObjectParse;
 import org.geogit.geotools.plumbing.GeoToolsOpException.StatusCode;
 import org.geogit.repository.WorkingTree;
 import org.geotools.data.DataStore;
@@ -24,10 +30,17 @@ import org.geotools.data.simple.SimpleFeatureSource;
 import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.type.Name;
+import org.opengis.feature.type.PropertyDescriptor;
 import org.opengis.util.ProgressListener;
 
+import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
 import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
+import com.google.common.collect.UnmodifiableIterator;
 import com.google.inject.Inject;
 
 /**
@@ -51,6 +64,10 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
     private WorkingTree workTree;
 
     private boolean overwrite = true;
+
+    private boolean force;
+
+    private boolean alter;
 
     /**
      * Constructs a new import operation with the given working tree.
@@ -83,6 +100,10 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             throw new GeoToolsOpException(StatusCode.ALL_AND_TABLE_DEFINED);
         }
 
+        if (alter && force) {
+            throw new GeoToolsOpException(StatusCode.ALTER_AND_FORCE_DEFINED);
+        }
+
         boolean foundTable = false;
 
         List<Name> typeNames;
@@ -90,6 +111,10 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             typeNames = dataStore.getNames();
         } catch (Exception e) {
             throw new GeoToolsOpException(StatusCode.UNABLE_TO_GET_NAMES);
+        }
+
+        if (typeNames.size() > 1 && alter) {
+            throw new GeoToolsOpException(StatusCode.ALTER_AND_ALL_DEFINED);
         }
 
         for (Name typeName : typeNames) {
@@ -107,25 +132,77 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
                 throw new GeoToolsOpException(StatusCode.UNABLE_TO_GET_FEATURES);
             }
 
-            RevFeatureType revType = RevFeatureType.build(featureSource.getSchema());
+            final RevFeatureType featureType = RevFeatureType.build(featureSource.getSchema());
 
+            String path;
             if (destPath == null || destPath.isEmpty()) {
-                destPath = revType.getName().getLocalPart();
+                path = featureType.getName().getLocalPart();
+            } else {
+                path = destPath;
             }
 
-            NodeRef.checkValidPath(destPath);
+            NodeRef.checkValidPath(path);
 
-            Optional<ObjectId> tree = command(ResolveTreeish.class).setTreeish(destPath).call();
-            if (!overwrite && tree.isPresent()) {
-                SimpleFeatureIterator featureIterator = features.features();
-                while (featureIterator.hasNext()) {
-                    SimpleFeature feature = featureIterator.next();
-                    String path = NodeRef.appendChild(destPath, feature.getID());
-                    Optional<Node> node = workTree.findUnstaged(path);
-                    if (!node.isPresent()) {
-                        workTree.insert(destPath, feature);
+            String refspec = Ref.WORK_HEAD + ":" + path;
+
+            Optional<NodeRef> child = command(FindTreeChild.class).setChildPath(path)
+                    .setParent(workTree.getTree()).call();
+            if (child.isPresent()) {
+                RevFeatureType defaultFeatureType = command(ResolveFeatureType.class)
+                        .setFeatureType(refspec).call().get();
+                if (featureType.equals(defaultFeatureType) || force) {
+                    SimpleFeatureIterator featureIterator = features.features();
+                    while (featureIterator.hasNext()) {
+                        SimpleFeature feature = featureIterator.next();
+                        String featurePath = NodeRef.appendChild(path, feature.getID());
+                        Optional<Node> node = workTree.findUnstaged(featurePath);
+                        if (node.isPresent()) {
+                            if (overwrite) {
+                                workTree.replace(path, feature);
+                            }
+                        } else {
+                            workTree.insert(path, feature);
+                        }
                     }
+                } else if (alter) {
+                    // first we modify the feature type and the existing features, if needed
+                    // TODO: modify feature type
+                    Optional<RevTree> tree = command(RevObjectParse.class).setRefSpec(refspec)
+                            .call(RevTree.class);
+                    Optional<ImmutableList<Node>> oldFeatures = tree.get().features();
+                    if (oldFeatures.isPresent() && oldFeatures.get().size() != 0) {
+                        UnmodifiableIterator<Node> nodeIterator = oldFeatures.get().iterator();
+                        Iterator<Feature> iterator = filterAndTransformIterator(nodeIterator,
+                                featureType);
+
+                        ProgressListener progressListener = getProgressListener();
+                        try {
+                            Integer collectionSize = features.size();
+                            workTree.insert(path, iterator, true, progressListener, null,
+                                    collectionSize);
+                        } catch (Exception e) {
+                            throw new GeoToolsOpException(StatusCode.UNABLE_TO_INSERT);
+                        }
+                    }
+                    // then we add the new ones
+                    SimpleFeatureIterator featureIterator = features.features();
+                    while (featureIterator.hasNext()) {
+                        SimpleFeature feature = featureIterator.next();
+                        String featurePath = NodeRef.appendChild(path, feature.getID());
+                        Optional<Node> node = workTree.findUnstaged(featurePath);
+                        if (node.isPresent()) {
+                            if (overwrite) {
+                                workTree.replace(path, feature);
+                            }
+                        } else {
+                            workTree.insert(path, feature);
+                        }
+                    }
+
+                } else {
+                    throw new GeoToolsOpException(StatusCode.UNCOMPATIBLE_FEATURE_TYPE);
                 }
+
             } else {
                 final SimpleFeatureIterator featureIterator = features.features();
                 Iterator<Feature> iterator = new AbstractIterator<Feature>() {
@@ -140,8 +217,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
                 ProgressListener progressListener = getProgressListener();
                 try {
                     Integer collectionSize = features.size();
-                    workTree.insert(destPath, iterator, true, progressListener, null,
-                            collectionSize);
+                    workTree.insert(path, iterator, true, progressListener, null, collectionSize);
                 } catch (Exception e) {
                     throw new GeoToolsOpException(StatusCode.UNABLE_TO_INSERT);
                 } finally {
@@ -157,6 +233,79 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             }
         }
         return workTree.getTree();
+    }
+
+    private Iterator<Feature> filterAndTransformIterator(UnmodifiableIterator<Node> nodeIterator,
+            final RevFeatureType defaultFeatureType) {
+
+        UnmodifiableIterator<Node> filteredIterator = Iterators.filter(nodeIterator,
+                new Predicate<Node>() {
+
+                    @Override
+                    public boolean apply(@Nullable Node node) {
+                        return canReplace(defaultFeatureType, featureType);
+                    }
+
+                });
+
+        Iterator<Feature> iterator = Iterators.transform(filteredIterator,
+                new Function<Node, Feature>() {
+                    @Override
+                    public Feature apply(Node node) {
+                        return alter(node, featureType);
+                    }
+
+                });
+
+        return iterator;
+
+    }
+
+    /**
+     * returns true if both passed features types can be used interchangeably, so there is not need
+     * to modify features, but just change the metadata id of the parent tree
+     * 
+     * @param featureType
+     * @param FeatureType2
+     * @return
+     */
+    private boolean canReplace(RevFeatureType featureType, RevFeatureType FeatureType2) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    /**
+     * Translates a feature pointed by a node from its original feature type to a given one, using
+     * values from those attributes that exist in both original and destination feature type. New
+     * attributes are populated with null values
+     * 
+     * @param node The node that points to the feature type. No checking is performed to ensure the
+     *        node points to a feature instead of other type
+     * @param featureType the destination feature type
+     * @return a feature with the passed feature type and data taken from the input feature
+     */
+    private Feature alter(Node node, RevFeatureType featureType) {
+        RevFeature oldFeature = command(RevObjectParse.class).setObjectId(node.getObjectId())
+                .call(RevFeature.class).get();
+        RevFeatureType oldFeatureType = command(RevObjectParse.class)
+                .setObjectId(node.getObjectId()).call(RevFeatureType.class).get();
+        ImmutableList<PropertyDescriptor> oldAttributes = oldFeatureType.sortedDescriptors();
+        ImmutableList<PropertyDescriptor> newAttributes = featureType.sortedDescriptors();
+        ImmutableList<Optional<Object>> oldValues = oldFeature.getValues();
+        List<Optional<Object>> newValues = Lists.newArrayList();
+        for (int i = 0; i < newAttributes.size(); i++) {
+            int idx = oldAttributes.indexOf(newAttributes.get(i));
+            if (idx != -1) {
+                Optional<Object> oldValue = oldValues.get(i);
+                newValues.add(oldValue);
+            } else {
+                newValues.add(Optional.absent());
+            }
+        }
+        RevFeature newFeature = new RevFeature(node.getObjectId(), ImmutableList.copyOf(newValues));
+        FeatureBuilder featureBuilder = new FeatureBuilder(featureType);
+        Feature feature = featureBuilder.build(node.getName(), newFeature);
+        return feature;
     }
 
     /**
@@ -195,12 +344,32 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
      * 
      * @param overwrite If this is true, existing features will be overwritten in case they exist
      *        and have the same path and Id than the features to import. If this is false, existing
-     *        features will not be overwritten, and an exception will be thrown if trying to import
-     *        a feature into a path that already contains another one with the same Id
+     *        features will not be overwritten, and a safe import is performed, where only those
+     *        features that do not already exists are added
      * @return {@code this}
      */
     public ImportOp setOverwrite(boolean overwrite) {
         this.overwrite = overwrite;
+        return this;
+    }
+
+    /**
+     * @param force if true, it will change the default feature type of the tree we are importing
+     *        into and change all features under that tree to have that same feature type
+     * @return {@code this}
+     */
+    public ImportOp setAlter(boolean alter) {
+        this.alter = alter;
+        return this;
+    }
+
+    /**
+     * @param force if true, import features even if their feature type do not match the feature
+     *        type of the tree we are importing into
+     * @return {@code this}
+     */
+    public ImportOp setForce(boolean force) {
+        this.force = force;
         return this;
     }
 

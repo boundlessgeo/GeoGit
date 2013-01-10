@@ -483,10 +483,11 @@ public class WorkingTree {
 
             if (null == revFeatureTypeId) {
                 RevFeatureType newFeatureType = RevFeatureType.build(featureType);
-
                 revFeatureTypeId = newFeatureType.getId();
-
                 indexDatabase.put(newFeatureType);
+                Node node = new Node(NodeRef.nodeFromPath(parentTreePath), parentTree.build()
+                        .getId(), revFeatureTypeId, TYPE.TREE);
+                getTree().builder(indexDatabase).put(node);
                 revFeatureTypes.put(featureType.getName(), revFeatureTypeId);
             }
 
