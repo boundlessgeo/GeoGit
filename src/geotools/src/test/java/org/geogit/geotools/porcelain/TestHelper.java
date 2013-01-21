@@ -14,10 +14,10 @@ import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.geometry.primitive.Point;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
 
 public class TestHelper {
 
@@ -35,6 +35,13 @@ public class TestHelper {
         builder2.setName("table2");
         SimpleFeatureType type2 = builder2.buildFeatureType();
 
+        SimpleFeatureTypeBuilder builder3 = new SimpleFeatureTypeBuilder();
+        builder3.add("geom", Point.class);
+        builder3.add("name", String.class);
+        builder3.add("number", Long.class);
+        builder3.setName("table3");
+        SimpleFeatureType type3 = builder3.buildFeatureType();
+
         GeometryFactory gf = new GeometryFactory();
         SimpleFeature f1 = SimpleFeatureBuilder.build(type,
                 new Object[] { gf.createPoint(new Coordinate(5, 8)), "feature1" }, "table1.1");
@@ -42,11 +49,16 @@ public class TestHelper {
                 new Object[] { gf.createPoint(new Coordinate(5, 4)), "feature2" }, "table1.2");
         SimpleFeature f3 = SimpleFeatureBuilder.build(type2,
                 new Object[] { gf.createPoint(new Coordinate(3, 2)), "feature3" }, "table2.1");
+        SimpleFeature f4 = SimpleFeatureBuilder
+                .build(type3,
+                        new Object[] { gf.createPoint(new Coordinate(0, 5)), "feature4", 1000 },
+                        "table2.1");
 
         MemoryDataStore testDataStore = new MemoryDataStore();
         testDataStore.addFeature(f1);
         testDataStore.addFeature(f2);
         testDataStore.addFeature(f3);
+        testDataStore.addFeature(f4);
 
         final AbstractDataStoreFactory factory = mock(AbstractDataStoreFactory.class);
         when(factory.createDataStore(anyMapOf(String.class, Serializable.class))).thenReturn(

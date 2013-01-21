@@ -343,6 +343,35 @@ public class WorkingTree {
                 .setChildPath(treePath).call().get();
     }
 
+    public NodeRef updateTypeTree(final String treePath, final FeatureType featureType) {
+
+        final RevTree workHead = getTree();
+        Optional<NodeRef> typeTreeRef = repository.command(FindTreeChild.class).setIndex(true)
+                .setParent(workHead).setChildPath(treePath).call();
+        Preconditions.checkArgument(typeTreeRef.isPresent(), "Tree does not exist: %s", treePath);
+
+        final RevFeatureType revType = RevFeatureType.build(featureType);
+        indexDatabase.put(revType);
+
+        final ObjectId metadataId = revType.getId();
+        RevTreeBuilder treeBuilder = new RevTreeBuilder(indexDatabase);
+        RevTree oldTree = repository.command(RevObjectParse.class)
+                .setObjectId(typeTreeRef.get().objectId()).call(RevTree.class).get();
+        /*
+         * repository.command(WriteBack.class).setToIndex(true).setAncestor(treeBuilder)
+         * .setChildPath("").setTree(oldTree).setMetadataId(metadataId).call();
+         */
+        final RevTree newTree = treeBuilder.build();
+        ObjectId newWorkHeadId = repository.command(WriteBack.class).setToIndex(true)
+                .setAncestor(workHead.builder(indexDatabase)).setChildPath(treePath)
+                .setTree(newTree).setMetadataId(metadataId).call();
+        updateWorkHead(newWorkHeadId);
+
+        return repository.command(FindTreeChild.class).setIndex(true).setParent(getTree())
+                .setChildPath(treePath).call().get();
+
+    }
+
     /**
      * Insert a single feature into the working tree and updates the WORK_HEAD ref.
      * 
@@ -358,13 +387,18 @@ public class WorkingTree {
         Optional<NodeRef> typeTreeRef = repository.command(FindTreeChild.class).setIndex(true)
                 .setParent(getTree()).setChildPath(parentTreePath).call();
 
+        ObjectId metadataId;
         if (typeTreeRef.isPresent()) {
             treeRef = typeTreeRef.get();
+            RevFeatureType newFeatureType = RevFeatureType.build(featureType);
+            metadataId = newFeatureType.getId() == treeRef.getMetadataId() ? ObjectId.NULL
+                    : newFeatureType.getId();
         } else {
             treeRef = createTypeTree(parentTreePath, featureType);
+            metadataId = treeRef.getMetadataId();
         }
 
-        ObjectId metadataId = treeRef.getMetadataId();
+        // ObjectId metadataId = treeRef.getMetadataId();
         final Node node = putInDatabase(feature, metadataId);
 
         RevTreeBuilder parentTree = repository.command(FindOrCreateSubtree.class).setIndex(true)
@@ -588,8 +622,8 @@ public class WorkingTree {
                 revFeatureTypes.put(featureType.getName(), revFeatureTypeId);
             }
 
-            final ObjectId metadataId = defaultMetadataId;// defaultMetadataId.equals(revFeatureTypeId)
-                                                          // ? ObjectId.NULL : revFeatureTypeId;
+            final ObjectId metadataId = defaultMetadataId.equals(revFeatureTypeId) ? ObjectId.NULL
+                    : revFeatureTypeId;
             final Node objectRef = putInDatabase(feature, metadataId);
             parentTree.put(objectRef);
             if (target != null) {
@@ -622,4 +656,5 @@ public class WorkingTree {
 
         return ImmutableList.copyOf(typeTrees);
     }
+
 }

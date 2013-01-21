@@ -36,9 +36,13 @@ To import into a tree named "myroads", the following command should be used:
 
 	$geogit shp import /home/shapefiles/roads.shp -d myroads
 
-If the working tree already contains a feature with the same Id under the selected destination path, it will be overwritten. To perform a safe import and only add new features without overwritting, the ``--no-overwite`` option can be used.
+If the working tree already contains a feature with the same Id under the selected destination path, it will be overwritten. To perform a safe import and only add new features without overwritting, the ``--no-overwrite`` option can be used.
 
 Features under the same path do not have to necessarily share the same feature type. In the case of shapefiles, several shapefiles containing features with different feature types can be imported to the same path. In the case of importing from a database, several tables can be imported into the same path in the GeoGit repository.
+
+Two modifiers control how GeoGit will handle the import of features with a feature type different to the default feature type of the specified path: ``--alter`` and ``--force``. 
+
+If none of these modifiers is used, GeoGit will only import features with a feature type matching the default one of the path to import into. If ``--force`` is used, all features are imported, regardless of their feature type. The default feature type remains unchanged. If ``--alter`` is used, the feature type of the features to import will be set as the new default feature type of the destination tree. All the feature that already existed in it will be modified to match that feature type. After this type of import operation, all features in the destination path will have the path's default feature type. 
 
 When importing from a database, additional parameters can be supplied to configure the database connection. In the case of importing from a PostGIS database, the following options are available.
 
@@ -57,6 +61,8 @@ When importing from a database, all tables can be imported with one single comma
 	$geogit pg import --all 
 
 If a destination path is supplied and the ``--all`` option used, all tables will be imported into the same path.
+
+The ``alter`` option is not compatible will the ``-all`` option.
 
 A listing of all available tables for a given database connection can be obtained using the ``list`` command, as shown below.
 
