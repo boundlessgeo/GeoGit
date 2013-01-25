@@ -9,6 +9,7 @@ import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.Ref;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevTree;
 
@@ -40,7 +41,7 @@ public class ResolveFeatureType extends AbstractGeoGitOp<Optional<RevFeatureType
         if (treeIshRefSpec.contains(":")) {
             refspec = treeIshRefSpec;
         } else {
-            refspec = "WORK_HEAD:" + treeIshRefSpec;
+            refspec = Ref.WORK_HEAD + ":" + treeIshRefSpec;
         }
         final String spec = refspec.substring(0, refspec.indexOf(':'));
         final String treePath = refspec.substring(refspec.indexOf(':') + 1);
@@ -48,11 +49,8 @@ public class ResolveFeatureType extends AbstractGeoGitOp<Optional<RevFeatureType
         Optional<ObjectId> treeId = command(ResolveTreeish.class).setTreeish(spec).call();
         Preconditions
                 .checkArgument(treeId.isPresent(), "spec '%s' did not resolve to a tree", spec);
-
-        Optional<NodeRef> node = command(FindTreeChild.class)
-                .setParent(
-                        command(RevObjectParse.class).setObjectId(treeId.get()).call(RevTree.class)
-                                .get())//
+        RevTree parent = command(RevObjectParse.class).setRefSpec(spec).call(RevTree.class).get();
+        Optional<NodeRef> node = command(FindTreeChild.class).setParent(parent)
                 .setChildPath(treePath).setIndex(true).call();
         if (!node.isPresent() /* || !node.get().getMetadataId().isPresent() */) {
             return Optional.absent();

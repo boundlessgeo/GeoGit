@@ -132,6 +132,11 @@ public class InitOp extends AbstractGeoGitOp<Repository> {
                 command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(Ref.MASTER)
                         .setReason("Repository initialization").call();
             }
+            Optional<Ref> workinghead = command(RefParse.class).setName(Ref.WORK_HEAD).call();
+            if (!workinghead.isPresent()) {
+                command(UpdateRef.class).setName(Ref.WORK_HEAD).setNewValue(ObjectId.NULL)
+                        .setReason("Repository initialization").call();
+            }
         }
     }
 }
