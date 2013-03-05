@@ -73,6 +73,8 @@ public class CommandBuilder {
         command.setPaths(Arrays.asList(options.getValuesArray("path")));
         command.setSince(options.getFirstValue("since"));
         command.setUntil(options.getFirstValue("until"));
+        command.setPage(parseInt(options, "page", 0));
+        command.setElementsPerPage(parseInt(options, "show", 30));
         return command;
     }
 
@@ -127,6 +129,8 @@ public class CommandBuilder {
         GetCommitGraph command = new GetCommitGraph();
         command.setDepth(parseInt(options, "depth", 0));
         command.setCommitId(options.getFirstValue("commitId", ObjectId.NULL.toString()));
+        command.setPage(parseInt(options, "page", 0));
+        command.setElementsPerPage(parseInt(options, "show", 30));
         return command;
     }
 }
