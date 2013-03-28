@@ -5,11 +5,12 @@ import java.util.Arrays;
 import org.geogit.api.ObjectId;
 import org.geogit.web.api.commands.Commit;
 import org.geogit.web.api.commands.Diff;
+import org.geogit.web.api.commands.FeatureDiffWeb;
 import org.geogit.web.api.commands.Log;
 import org.geogit.web.api.commands.LsTree;
+import org.geogit.web.api.commands.RefParseWeb;
 import org.geogit.web.api.commands.Status;
 import org.geogit.web.api.commands.UpdateRefWeb;
-import org.geogit.web.api.commands.RefParseWeb;
 
 /**
  *
@@ -33,6 +34,8 @@ public class CommandBuilder {
             command = buildDiff(options);
         } else if ("refparse".equalsIgnoreCase(commandName)) {
             command = buildRefParse(options);
+        } else if ("featurediff".equalsIgnoreCase(commandName)) {
+            command = buildFeatureDiff(options);
         } else {
             throw new CommandSpecException("'" + commandName + "' is not a geogit command");
         }
@@ -102,10 +105,18 @@ public class CommandBuilder {
         command.setPathFilter(options.getFirstValue("pathFilter", null));
         return command;
     }
-    
+
     static RefParseWeb buildRefParse(ParameterSet options) {
         RefParseWeb command = new RefParseWeb();
         command.setName(options.getFirstValue("name", null));
+        return command;
+    }
+
+    static FeatureDiffWeb buildFeatureDiff(ParameterSet options) {
+        FeatureDiffWeb command = new FeatureDiffWeb();
+        command.setPath(options.getFirstValue("path", null));
+        command.setOldCommitId(options.getFirstValue("oldCommitId", ObjectId.NULL.toString()));
+        command.setNewCommitId(options.getFirstValue("newCommitId", ObjectId.NULL.toString()));
         return command;
     }
 }
