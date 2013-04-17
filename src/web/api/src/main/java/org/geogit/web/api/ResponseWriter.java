@@ -1,12 +1,16 @@
 package org.geogit.web.api;
 
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.codehaus.jettison.AbstractXMLStreamWriter;
+import org.geogit.api.GeogitSimpleFeature;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
@@ -15,9 +19,13 @@ import org.geogit.api.RevPerson;
 import org.geogit.api.SymRef;
 import org.geogit.api.plumbing.DiffIndex;
 import org.geogit.api.plumbing.DiffWorkTree;
+import org.geogit.api.plumbing.diff.AttributeDiff;
 import org.geogit.api.plumbing.diff.DiffEntry;
+import org.geogit.api.plumbing.diff.DiffEntry.ChangeType;
+import org.opengis.feature.type.PropertyDescriptor;
 
 import com.google.common.collect.ImmutableList;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  *
@@ -128,8 +136,11 @@ public class ResponseWriter {
         }
     }
 
-    public void writeCommits(Iterator<RevCommit> entries) throws XMLStreamException {
-        while (entries.hasNext()) {
+    public void writeCommits(Iterator<RevCommit> entries, int page, int elementsPerPage)
+            throws XMLStreamException {
+        advance(entries, page * elementsPerPage);
+        int counter = 0;
+        while (entries.hasNext() && counter < elementsPerPage) {
             RevCommit entry = entries.next();
             out.writeStartElement("commit");
             writeElement("id", entry.getId().toString());
@@ -152,6 +163,7 @@ public class ResponseWriter {
             out.writeEndElement();
 
             out.writeEndElement();
+            counter++;
         }
     }
 
@@ -226,5 +238,41 @@ public class ResponseWriter {
     public void writeEmptyRefResponse() throws XMLStreamException {
         out.writeStartElement("RefNotFound");
         out.writeEndElement();
+    }
+
+    public void writeFeatureDiffResponse(Map<PropertyDescriptor, AttributeDiff> diffs)
+            throws XMLStreamException {
+        Set<Entry<PropertyDescriptor, AttributeDiff>> entries = diffs.entrySet();
+        Iterator<Entry<PropertyDescriptor, AttributeDiff>> iter = entries.iterator();
+        while (iter.hasNext()) {
+            Entry<PropertyDescriptor, AttributeDiff> entry = iter.next();
+            out.writeStartElement("diff");
+            writeElement("attributename", entry.getKey().getName().toString());
+            writeElement("changetype", entry.getValue().getType().toString());
+            if (entry.getValue().getOldValue() != null
+                    && entry.getValue().getOldValue().isPresent()) {
+                writeElement("oldvalue", entry.getValue().getOldValue().get().toString());
+            }
+            if (entry.getValue().getNewValue() != null
+                    && entry.getValue().getNewValue().isPresent()) {
+                writeElement("newvalue", entry.getValue().getNewValue().get().toString());
+            }
+            out.writeEndElement();
+        }
+    }
+
+    public void writeDiffResponse(Iterator<GeogitSimpleFeature> features,
+            Iterator<ChangeType> changes) throws XMLStreamException {
+
+        while (features.hasNext()) {
+            GeogitSimpleFeature feature = features.next();
+            ChangeType change = changes.next();
+            out.writeStartElement("Feature");
+            writeElement("change", change.toString());
+            writeElement("id", feature.getID().toString());
+            writeElement("geometry", ((Geometry) feature.getDefaultGeometry()).toText());
+            out.writeEndElement();
+        }
+
     }
 }
