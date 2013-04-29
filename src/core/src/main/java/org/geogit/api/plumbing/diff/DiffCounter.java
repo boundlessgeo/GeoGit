@@ -80,9 +80,9 @@ public class DiffCounter implements Supplier<Long> {
     private long countDiffs(RevTree oldTree, RevTree newTree) {
         if (oldTree.getId().equals(newTree.getId())) {
             return 0L;
-        } else if (newTree.isEmpty()) {
+        } else if (newTree.isEmpty() && !oldTree.isEmpty()) {
             return countOf(oldTree);
-        } else if (oldTree.isEmpty()) {
+        } else if (oldTree.isEmpty() && !newTree.isEmpty()) {
             return countOf(newTree);
         }
 
@@ -316,7 +316,8 @@ public class DiffCounter implements Supplier<Long> {
      * @return the total size of {@code tree}
      */
     private long countOf(RevTree tree) {
-        return tree.size();
+        return Math.max(1, tree.size()); // we return at least 1 to count for the tree itself if it
+                                         // is empty;
     }
 
     private long aggregateSize(Iterable<Node> children) {
