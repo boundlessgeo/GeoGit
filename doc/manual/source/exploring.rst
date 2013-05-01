@@ -35,7 +35,7 @@ Below you can find examples of the results obtained by using different options, 
 
 ::
 
-	$geogit -v -r -t
+	$geogit ls -v -r -t
 	Root tree/
 	    parks/ 
 	        parks.2 
