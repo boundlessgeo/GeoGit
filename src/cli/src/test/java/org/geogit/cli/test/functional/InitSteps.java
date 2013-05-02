@@ -18,7 +18,6 @@ import static org.junit.Assert.fail;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -41,6 +40,7 @@ import org.geogit.api.porcelain.BranchCreateOp;
 import org.geogit.api.porcelain.CheckoutOp;
 import org.geogit.api.porcelain.CommitOp;
 import org.geogit.api.porcelain.MergeOp;
+import org.geogit.repository.WorkingTree;
 import org.opengis.feature.Feature;
 import org.opengis.feature.type.PropertyDescriptor;
 
@@ -327,6 +327,13 @@ public class InitSteps extends AbstractGeogitFunctionalTest {
         } else {
             throw new Exception("Unknown Feature");
         }
+    }
+
+    @Given("^I have unstaged an empty feature type$")
+    public void I_have_unstaged_an_empty_feature_type() throws Throwable {
+        insert(points1);
+        final WorkingTree workTree = geogit.getRepository().getWorkingTree();
+        workTree.delete(pointsName, idP1);
     }
 
     @Given("^I stage 6 features$")

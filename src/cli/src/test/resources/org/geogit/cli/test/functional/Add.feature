@@ -27,6 +27,20 @@ Feature: "add" command
      When I run the command "add Points/Points.1"
      Then the response should contain "1 features staged for commit"
      
+  Scenario: Try to add an empty feature type
+    Given I have a repository
+      And I have unstaged an empty feature type
+     When I run the command "add"
+     Then the response should contain "1 features staged for commit"     
+     
+  Scenario: Try to add an empty feature type to an unclean index
+    Given I have a repository
+      And I have unstaged "points1"
+      And I run the command "add"
+      And I have unstaged an empty feature type
+     When I run the command "add"
+     Then the response should contain "1 features staged for commit"     
+     
   Scenario: Try to add from an empty directory
     Given I am in an empty directory
      When I run the command "add"
