@@ -342,8 +342,12 @@ public class RevTreeBuilder {
         }
 
         // compute final size and number of trees out of the aggregate deltas
-        long accSize = this.initialSize + sizeDelta;
+        long accSize = sizeDelta;
+        if (initialSize > RevTree.NORMALIZED_SIZE_LIMIT) {
+            accSize += initialSize;
+        }
         int accChildTreeCount = this.initialNumTrees + treesDelta;
+
         return RevTreeImpl.createNodeTree(ObjectId.NULL, accSize, accChildTreeCount,
                 this.bucketTreesByBucket);
     }
@@ -457,4 +461,5 @@ public class RevTreeBuilder {
         RevTreeImpl namedTree = RevTreeImpl.create(treeId, unnamedTree.size(), unnamedTree);
         return namedTree;
     }
+
 }
