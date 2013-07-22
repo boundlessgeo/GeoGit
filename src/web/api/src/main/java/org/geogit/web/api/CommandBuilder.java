@@ -3,6 +3,7 @@ package org.geogit.web.api;
 import java.util.Arrays;
 
 import org.geogit.api.ObjectId;
+import org.geogit.web.api.commands.AddWebOp;
 import org.geogit.web.api.commands.BeginTransaction;
 import org.geogit.web.api.commands.BranchWebOp;
 import org.geogit.web.api.commands.CheckoutWebOp;
@@ -10,12 +11,16 @@ import org.geogit.web.api.commands.Commit;
 import org.geogit.web.api.commands.Diff;
 import org.geogit.web.api.commands.EndTransaction;
 import org.geogit.web.api.commands.FeatureDiffWeb;
+import org.geogit.web.api.commands.FetchWebOp;
 import org.geogit.web.api.commands.GetCommitGraph;
 import org.geogit.web.api.commands.Log;
 import org.geogit.web.api.commands.LsTree;
 import org.geogit.web.api.commands.MergeWebOp;
+import org.geogit.web.api.commands.PullWebOp;
+import org.geogit.web.api.commands.PushWebOp;
 import org.geogit.web.api.commands.RefParseWeb;
 import org.geogit.web.api.commands.RemoteWebOp;
+import org.geogit.web.api.commands.RemoveWebOp;
 import org.geogit.web.api.commands.Status;
 import org.geogit.web.api.commands.TagWebOp;
 import org.geogit.web.api.commands.UpdateRefWeb;
@@ -55,6 +60,12 @@ public class CommandBuilder {
             command = buildBranch(options);
         } else if ("remote".equalsIgnoreCase(commandName)) {
             command = buildRemote(options);
+        } else if ("push".equalsIgnoreCase(commandName)) {
+            command = buildPush(options);
+        } else if ("pull".equalsIgnoreCase(commandName)) {
+            command = buildPull(options);
+        } else if ("fetch".equalsIgnoreCase(commandName)) {
+            command = buildFetch(options);
         } else if ("tag".equalsIgnoreCase(commandName)) {
             command = buildTag(options);
         } else if ("featurediff".equalsIgnoreCase(commandName)) {
@@ -69,6 +80,10 @@ public class CommandBuilder {
             command = buildBeginTransaction(options);
         } else if ("endTransaction".equalsIgnoreCase(commandName)) {
             command = buildEndTransaction(options);
+        } else if ("add".equalsIgnoreCase(commandName)) {
+            command = buildAdd(options);
+        } else if ("remove".equalsIgnoreCase(commandName)) {
+            command = buildRemove(options);
         } else {
             throw new CommandSpecException("'" + commandName + "' is not a geogit command");
         }
@@ -122,7 +137,7 @@ public class CommandBuilder {
      */
     static Log buildLog(ParameterSet options) {
         Log command = new Log();
-        command.setLimit(parseInt(options, "limit", 50));
+        command.setLimit(parseInt(options, "limit", null));
         command.setOffset(parseInt(options, "offset", null));
         command.setPaths(Arrays.asList(options.getValuesArray("path")));
         command.setSince(options.getFirstValue("since"));
@@ -144,6 +159,8 @@ public class CommandBuilder {
         Commit commit = new Commit();
         commit.setAll(Boolean.valueOf(options.getFirstValue("all", "false")));
         commit.setMessage(options.getFirstValue("message", null));
+        commit.setAuthorName(options.getFirstValue("authorName", null));
+        commit.setAuthorEmail(options.getFirstValue("authorEmail", null));
         return commit;
     }
 
@@ -227,6 +244,53 @@ public class CommandBuilder {
     static RemoteWebOp buildRemote(ParameterSet options) {
         RemoteWebOp command = new RemoteWebOp();
         command.setList(Boolean.valueOf(options.getFirstValue("list", "false")));
+        command.setRemove(Boolean.valueOf(options.getFirstValue("remove", "false")));
+        command.setRemoteName(options.getFirstValue("remoteName", null));
+        command.setRemoteURL(options.getFirstValue("remoteURL", null));
+        return command;
+    }
+
+    /**
+     * Builds the {@link PushWebOp} command.
+     * 
+     * @param options the parameter set
+     * @return the built command
+     */
+    static PushWebOp buildPush(ParameterSet options) {
+        PushWebOp command = new PushWebOp();
+        command.setPushAll(Boolean.valueOf(options.getFirstValue("all", "false")));
+        command.setRefSpec(options.getFirstValue("ref", null));
+        command.setRemoteName(options.getFirstValue("remoteName", null));
+        return command;
+    }
+
+    /**
+     * Builds the {@link PullWebOp} command.
+     * 
+     * @param options the parameter set
+     * @return the built command
+     */
+    static PullWebOp buildPull(ParameterSet options) {
+        PullWebOp command = new PullWebOp();
+        command.setFetchAll(Boolean.valueOf(options.getFirstValue("all", "false")));
+        command.setRefSpec(options.getFirstValue("ref", null));
+        command.setRemoteName(options.getFirstValue("remoteName", null));
+        command.setAuthorName(options.getFirstValue("authorName", null));
+        command.setAuthorEmail(options.getFirstValue("authorEmail", null));
+        return command;
+    }
+
+    /**
+     * Builds the {@link FetchWebOp} command.
+     * 
+     * @param options the parameter set
+     * @return the built command
+     */
+    static FetchWebOp buildFetch(ParameterSet options) {
+        FetchWebOp command = new FetchWebOp();
+        command.setFetchAll(Boolean.valueOf(options.getFirstValue("all", "false")));
+        command.setPrune(Boolean.valueOf(options.getFirstValue("prune", "false")));
+        command.setRemote(options.getFirstValue("remote"));
         return command;
     }
 
@@ -305,6 +369,8 @@ public class CommandBuilder {
         MergeWebOp command = new MergeWebOp();
         command.setNoCommit(Boolean.valueOf(options.getFirstValue("noCommit", "false")));
         command.setCommit(options.getFirstValue("commit", null));
+        command.setAuthorName(options.getFirstValue("authorName", null));
+        command.setAuthorEmail(options.getFirstValue("authorEmail", null));
         return command;
     }
 
@@ -317,6 +383,34 @@ public class CommandBuilder {
     static CheckoutWebOp buildCheckout(ParameterSet options) {
         CheckoutWebOp command = new CheckoutWebOp();
         command.setName(options.getFirstValue("branch", null));
+        command.setOurs(Boolean.valueOf(options.getFirstValue("ours", "false")));
+        command.setTheirs(Boolean.valueOf(options.getFirstValue("theirs", "false")));
+        command.setPath(options.getFirstValue("path", null));
+        return command;
+    }
+
+    /**
+     * Builds the {@link AddWebOp} command.
+     * 
+     * @param options the parameter set
+     * @return the built command
+     */
+    static AddWebOp buildAdd(ParameterSet options) {
+        AddWebOp command = new AddWebOp();
+        command.setPath(options.getFirstValue("path", null));
+        return command;
+    }
+
+    /**
+     * Builds the {@link RemoveWebOp} command.
+     * 
+     * @param options the parameter set
+     * @return the built command
+     */
+    static RemoveWebOp buildRemove(ParameterSet options) {
+        RemoveWebOp command = new RemoveWebOp();
+        command.setPath(options.getFirstValue("path", null));
+        command.setRecursive(Boolean.valueOf(options.getFirstValue("recursive", "false")));
         return command;
     }
 }

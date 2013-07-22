@@ -40,6 +40,9 @@ import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffEntry.ChangeType;
 import org.geogit.api.plumbing.merge.Conflict;
 import org.geogit.api.plumbing.merge.MergeScenarioReport;
+import org.geogit.api.porcelain.FetchResult;
+import org.geogit.api.porcelain.FetchResult.ChangedRef;
+import org.geogit.api.porcelain.PullResult;
 import org.geogit.storage.GtEntityType;
 import org.geogit.web.api.commands.BranchWebOp;
 import org.geogit.web.api.commands.LsTree;
@@ -466,6 +469,68 @@ public class ResponseWriter {
         }
     }
 
+    public void writeFetchResponse(FetchResult result) throws XMLStreamException {
+        out.writeStartElement("Fetch");
+        if (result.getChangedRefs().entrySet().size() > 0) {
+            for (Entry<String, List<ChangedRef>> entry : result.getChangedRefs().entrySet()) {
+                out.writeStartElement("Remote");
+                writeElement("remoteName", entry.getKey());
+                for (ChangedRef ref : entry.getValue()) {
+                    out.writeStartElement("Branch");
+
+                    writeElement("changeType", ref.getType().toString());
+                    if (ref.getOldRef() != null) {
+                        writeElement("name", ref.getOldRef().localName());
+                        writeElement("oldValue", ref.getOldRef().getObjectId().toString());
+                    }
+                    if (ref.getNewRef() != null) {
+                        if (ref.getOldRef() == null) {
+                            writeElement("name", ref.getNewRef().localName());
+                        }
+                        writeElement("newValue", ref.getNewRef().getObjectId().toString());
+                    }
+                    out.writeEndElement();
+                }
+                out.writeEndElement();
+            }
+        }
+        out.writeEndElement();
+    }
+
+    public void writePullResponse(PullResult result, Iterator<DiffEntry> iter, CommandLocator geogit)
+            throws XMLStreamException {
+        out.writeStartElement("Pull");
+        writeFetchResponse(result.getFetchResult());
+        if (iter != null) {
+            writeElement("Remote", result.getRemoteName());
+            writeElement("Ref", result.getNewRef().localName());
+            int added = 0;
+            int removed = 0;
+            int modified = 0;
+            while (iter.hasNext()) {
+                DiffEntry entry = iter.next();
+                if (entry.changeType() == ChangeType.ADDED) {
+                    added++;
+                } else if (entry.changeType() == ChangeType.MODIFIED) {
+                    modified++;
+                } else if (entry.changeType() == ChangeType.REMOVED) {
+                    removed++;
+                }
+            }
+            writeElement("Added", Integer.toString(added));
+            writeElement("Modified", Integer.toString(modified));
+            writeElement("Removed", Integer.toString(removed));
+        }
+        if (result.getMergeReport().isPresent()
+                && result.getMergeReport().get().getReport().isPresent()) {
+            writeMergeResponse(result.getMergeReport().get().getReport().get(), geogit, result
+                    .getMergeReport().get().getOurs(), result.getMergeReport().get().getPairs()
+                    .get(0).getTheirs(), result.getMergeReport().get().getPairs().get(0)
+                    .getAncestor());
+        }
+        out.writeEndElement();
+    }
+
     /**
      * Writes a set of feature diffs to the stream.
      * 
@@ -690,6 +755,8 @@ public class ResponseWriter {
                 out.writeStartElement("Feature");
                 writeElement("change", "CONFLICT");
                 writeElement("id", next.getConflict().getPath());
+                writeElement("ourvalue", next.getConflict().getOurs().toString());
+                writeElement("theirvalue", next.getConflict().getTheirs().toString());
                 writeElement("geometry", next.getGeometry().toText());
                 if (next.getCRS() != null) {
                     writeElement("crs", next.getCRS());

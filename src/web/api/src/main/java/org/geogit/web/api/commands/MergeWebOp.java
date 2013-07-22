@@ -1,5 +1,7 @@
 package org.geogit.web.api.commands;
 
+import javax.annotation.Nullable;
+
 import org.geogit.api.GeogitTransaction;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
@@ -26,6 +28,10 @@ public class MergeWebOp extends AbstractWebAPICommand {
 
     private String commit;
 
+    private Optional<String> authorName = Optional.absent();
+
+    private Optional<String> authorEmail = Optional.absent();
+
     /**
      * Mutator for the noCommit variable
      * 
@@ -42,6 +48,20 @@ public class MergeWebOp extends AbstractWebAPICommand {
      */
     public void setCommit(String commit) {
         this.commit = commit;
+    }
+
+    /**
+     * @param authorName the author of the merge commit
+     */
+    public void setAuthorName(@Nullable String authorName) {
+        this.authorName = Optional.fromNullable(authorName);
+    }
+
+    /**
+     * @param authorEmail the email of the author of the merge commit
+     */
+    public void setAuthorEmail(@Nullable String authorEmail) {
+        this.authorEmail = Optional.fromNullable(authorEmail);
     }
 
     /**
@@ -68,20 +88,15 @@ public class MergeWebOp extends AbstractWebAPICommand {
         }
 
         MergeOp merge = transaction.command(MergeOp.class);
-        final RevCommit ours = context.getGeoGIT().getRepository()
-                .getCommit(currHead.get().getObjectId());
+        merge.setAuthor(authorName.orNull(), authorEmail.orNull());
+
         final Optional<ObjectId> oid = transaction.command(RevParse.class).setRefSpec(commit)
                 .call();
-        final RevCommit theirs;
         if (oid.isPresent()) {
-            theirs = context.getGeoGIT().getRepository().getCommit(oid.get());
             merge.addCommit(Suppliers.ofInstance(oid.get()));
         } else {
             throw new CommandSpecException("Couldn't resolve '" + commit + "' to a commit.");
         }
-
-        final Optional<RevCommit> ancestor = transaction.command(FindCommonAncestor.class)
-                .setLeft(ours).setRight(theirs).call();
 
         try {
             final MergeReport report = merge.setNoCommit(noCommit).call();
@@ -90,12 +105,18 @@ public class MergeWebOp extends AbstractWebAPICommand {
                 @Override
                 public void write(ResponseWriter out) throws Exception {
                     out.start();
-                    out.writeMergeResponse(report.getReport().get(), transaction, ours.getId(),
-                            theirs.getId(), ancestor.get().getId());
+                    out.writeMergeResponse(report.getReport().get(), transaction, report.getOurs(),
+                            report.getPairs().get(0).getTheirs(), report.getPairs().get(0)
+                                    .getAncestor());
                     out.finish();
                 }
             });
         } catch (Exception e) {
+            final RevCommit ours = context.getGeoGIT().getRepository()
+                    .getCommit(currHead.get().getObjectId());
+            final RevCommit theirs = context.getGeoGIT().getRepository().getCommit(oid.get());
+            final Optional<RevCommit> ancestor = transaction.command(FindCommonAncestor.class)
+                    .setLeft(ours).setRight(theirs).call();
             context.setResponseContent(new CommandResponse() {
                 final MergeScenarioReport report = transaction.command(ReportMergeScenarioOp.class)
                         .setMergeIntoCommit(ours).setToMergeCommit(theirs).call();

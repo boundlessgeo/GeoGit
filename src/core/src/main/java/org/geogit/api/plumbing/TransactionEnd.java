@@ -7,12 +7,15 @@ package org.geogit.api.plumbing;
 
 import java.util.concurrent.TimeoutException;
 
+import javax.annotation.Nullable;
+
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.GeogitTransaction;
 import org.geogit.api.Ref;
 import org.geogit.api.SymRef;
 import org.geogit.api.porcelain.CheckoutOp;
 import org.geogit.api.porcelain.MergeOp;
+import org.geogit.api.porcelain.NothingToCommitException;
 import org.geogit.api.porcelain.RebaseOp;
 
 import com.google.common.base.Optional;
@@ -41,6 +44,10 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
 
     private boolean rebase = false;
 
+    private Optional<String> authorName = Optional.absent();
+
+    private Optional<String> authorEmail = Optional.absent();
+
     @Inject
     public TransactionEnd() {
     }
@@ -66,6 +73,12 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
 
     public TransactionEnd setRebase(boolean rebase) {
         this.rebase = rebase;
+        return this;
+    }
+
+    public TransactionEnd setAuthor(@Nullable String authorName, @Nullable String authorEmail) {
+        this.authorName = Optional.fromNullable(authorName);
+        this.authorEmail = Optional.fromNullable(authorEmail);
         return this;
     }
 
@@ -118,9 +131,14 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
                             // sync transactions have to use merge to prevent divergent history
                             transaction.command(CheckoutOp.class).setSource(ref.getName())
                                     .setForce(true).call();
+                            try {
                             transaction.command(MergeOp.class)
+                                    .setAuthor(authorName.orNull(), authorEmail.orNull())
                                     .addCommit(Suppliers.ofInstance(repoRef.get().getObjectId()))
                                     .setTheirs(true).call();
+                            } catch (NothingToCommitException e) {
+                            	// The repo commit is already in our history, this is a fast forward.
+                            }
                             updatedRef = transaction.command(RefParse.class).setName(ref.getName())
                                     .call().get();
                         }
