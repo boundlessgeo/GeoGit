@@ -96,6 +96,15 @@
       <artifactId>neo4j-kernel</artifactId>
       <type>test-jar</type>
     </dependency>
+    
+    <dependency>
+    	<groupId>log4j</groupId>
+    	<artifactId>log4j</artifactId>
+    </dependency>
+    <dependency>
+    	<groupId>org.perf4j</groupId>
+    	<artifactId>perf4j</artifactId>
+    </dependency>
 
     <!-- Test scope dependencies -->
     <dependency>

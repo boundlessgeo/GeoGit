@@ -18,6 +18,9 @@ import org.opengis.util.ProgressListener;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 
+import org.apache.log4j.Logger;
+import org.perf4j.log4j.Log4JStopWatch;
+
 /**
  * Imports features from one or more shapefiles.
  * 
@@ -27,6 +30,8 @@ import com.beust.jcommander.Parameters;
  */
 @Parameters(commandNames = "import", commandDescription = "Import Shapefile")
 public class ShpImport extends AbstractShpCommand implements CLICommand {
+    private static final Logger LOG = Logger.getLogger("org.geogit.geotools");
+    private static final Logger DEVLOG = Logger.getLogger("dev.org.geogit.geotools");
 
     /**
      * Shapefiles to import.
@@ -76,18 +81,26 @@ public class ShpImport extends AbstractShpCommand implements CLICommand {
             try {
                 dataStore = getDataStore(shp);
             } catch (FileNotFoundException e) {
-                cli.getConsole().println(
-                        "The shapefile '" + shp + "' could not be found, skipping...");
+                cli.getConsole().println("The shapefile '" + shp + "' could not be found, skipping...");
                 continue;
             }
 
             try {
+                LOG.info("Importing from shapefile: " + shp);
                 cli.getConsole().println("Importing from shapefile " + shp);
+                
+                // performance timer for operation
+                org.perf4j.StopWatch shpImportTimer = new Log4JStopWatch();
+
+                shpImportTimer.start();
 
                 ProgressListener progressListener = cli.getProgressListener();
                 cli.getGeogit().command(ImportOp.class).setAll(true).setTable(null).setAlter(alter)
                         .setOverwrite(!add).setDestinationPath(destTable).setDataStore(dataStore)
                         .setProgressListener(progressListener).call();
+                
+                // log time to file .log/org.geogit.performance.log
+                shpImportTimer.stop("Import Shapefile: " + shp);
 
                 cli.getConsole().println(shp + " imported successfully.");
             } catch (GeoToolsOpException e) {

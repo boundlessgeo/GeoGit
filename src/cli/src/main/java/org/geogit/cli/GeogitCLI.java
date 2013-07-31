@@ -30,6 +30,8 @@ import org.geogit.api.porcelain.ConfigException;
 import org.geogit.api.porcelain.ConfigGet;
 import org.geotools.util.DefaultProgressListener;
 import org.geotools.util.logging.Logging;
+import org.geotools.util.logging.Log4JLoggerFactory;
+import org.apache.log4j.Logger;
 import org.opengis.util.ProgressListener;
 
 import com.beust.jcommander.JCommander;
@@ -68,6 +70,9 @@ public class GeogitCLI {
     private ConsoleReader consoleReader;
 
     private DefaultProgressListener progressListener;
+    
+    private static final Logger LOG = Logger.getLogger("org.geogit.cli");
+    private static final Logger DEVLOG = Logger.getLogger("dev.org.geogit.cli");
 
     /**
      * Construct a GeogitCLI with the given console reader.
@@ -200,7 +205,10 @@ public class GeogitCLI {
      */
     public static void main(String[] args) {
         Logging.ALL.forceMonolineConsoleOutput();
-        // TODO: revisit in case we need to grafefully shutdown upon CTRL+C
+        // direct GeoTools logging output to Log4J
+        Logging.GEOTOOLS.setLoggerFactory(Log4JLoggerFactory.getInstance());
+        
+        // TODO: revisit in case we need to gracefully shutdown upon CTRL+C
         // Runtime.getRuntime().addShutdownHook(new Thread() {
         // @Override
         // public void run() {
@@ -208,6 +216,8 @@ public class GeogitCLI {
         // System.err.flush();
         // }
         // });
+        
+        
 
         ConsoleReader consoleReader;
         try {
@@ -228,7 +238,8 @@ public class GeogitCLI {
             try {
                 consoleReader.getTerminal().restore();
             } catch (Exception e) {
-                e.printStackTrace();
+            	DEVLOG.error("Could not close CLI.", e);
+            	//e.printStackTrace();
                 exitCode = -1;
             }
         }
@@ -288,7 +299,8 @@ public class GeogitCLI {
                     consoleReader.flush();
                 }
             } catch (IOException ioe) {
-                ioe.printStackTrace();
+            	DEVLOG.error("Error in processing command.", ioe);
+                //ioe.printStackTrace();
             }
         }
         return exitCode;
