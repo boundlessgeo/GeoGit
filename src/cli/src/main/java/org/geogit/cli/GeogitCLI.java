@@ -72,7 +72,6 @@ public class GeogitCLI {
     private DefaultProgressListener progressListener;
     
     private static final Logger LOG = Logger.getLogger("org.geogit.cli");
-    private static final Logger DEVLOG = Logger.getLogger("dev.org.geogit.cli");
 
     /**
      * Construct a GeogitCLI with the given console reader.
@@ -238,7 +237,7 @@ public class GeogitCLI {
             try {
                 consoleReader.getTerminal().restore();
             } catch (Exception e) {
-            	DEVLOG.error("Could not close CLI.", e);
+            	LOG.trace("Could not close CLI.", e);
             	//e.printStackTrace();
                 exitCode = -1;
             }
@@ -299,7 +298,7 @@ public class GeogitCLI {
                     consoleReader.flush();
                 }
             } catch (IOException ioe) {
-            	DEVLOG.error("Error in processing command.", ioe);
+            	LOG.trace("Error in processing command.", ioe);
                 //ioe.printStackTrace();
             }
         }

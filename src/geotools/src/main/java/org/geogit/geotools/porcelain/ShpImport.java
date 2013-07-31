@@ -30,8 +30,8 @@ import org.perf4j.log4j.Log4JStopWatch;
  */
 @Parameters(commandNames = "import", commandDescription = "Import Shapefile")
 public class ShpImport extends AbstractShpCommand implements CLICommand {
+    
     private static final Logger LOG = Logger.getLogger("org.geogit.geotools");
-    private static final Logger DEVLOG = Logger.getLogger("dev.org.geogit.geotools");
 
     /**
      * Shapefiles to import.
