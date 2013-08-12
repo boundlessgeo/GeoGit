@@ -12,9 +12,11 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 import org.geogit.api.AbstractGeoGitOp;
+import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevTree;
+import org.geogit.api.plumbing.FindTreeChild;
 import org.geogit.api.plumbing.RevParse;
 import org.geogit.api.plumbing.UpdateRef;
 import org.geogit.api.plumbing.diff.DiffEntry;
@@ -96,9 +98,24 @@ public class AddOp extends AbstractGeoGitOp<WorkingTree> {
             return;
         }
 
-        final long numChanges = getWorkTree().countUnstaged(pathFilter);
+        long numChanges = getWorkTree().countUnstaged(pathFilter);
 
         Iterator<DiffEntry> unstaged = getWorkTree().getUnstaged(pathFilter);
+
+        // if the tree referred by the path filter has changed, the above call will not add it to
+        // the list of unstaged elements. We add it manually here in that case
+        if (pathFilter != null) {
+            Optional<NodeRef> workTreeParent = command(FindTreeChild.class)
+                    .setParent(getWorkTree().getTree()).setChildPath(pathFilter).setIndex(true)
+                    .call();
+            Optional<NodeRef> indexParent = command(FindTreeChild.class)
+                    .setParent(getIndex().getTree()).setChildPath(pathFilter).setIndex(true).call();
+            if (!workTreeParent.equals(indexParent)) {
+                DiffEntry diff = new DiffEntry(indexParent.orNull(), workTreeParent.orNull());
+                unstaged = Iterators.concat(unstaged, Iterators.singletonIterator(diff));
+                numChanges++;
+            }
+        }
 
         if (updateOnly) {
             unstaged = Iterators.filter(unstaged, new Predicate<DiffEntry>() {

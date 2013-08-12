@@ -21,6 +21,7 @@ import org.geogit.api.RevCommit;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevTree;
 import org.geogit.api.plumbing.FindTreeChild;
+import org.geogit.api.plumbing.ResolveFeatureType;
 import org.geogit.api.plumbing.RevObjectParse;
 import org.geogit.api.plumbing.RevParse;
 import org.geogit.api.plumbing.diff.DiffEntry;
@@ -35,6 +36,7 @@ import org.junit.rules.ExpectedException;
 import org.opengis.util.ProgressListener;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 
 public class CommitOpTest extends RepositoryTestCase {
     @Rule
@@ -110,6 +112,17 @@ public class CommitOpTest extends RepositoryTestCase {
         assertNotNull(commit);
         RevFeatureType type = geogit.getRepository().getObjectDatabase().getFeatureType(id);
         assertEquals(id, type.getId());
+    }
+
+    @Test
+    public void testStageAndCommitUsingPathFilter() throws Exception {
+        insert(points1);
+        RevCommit commit = geogit.command(CommitOp.class)
+                .setPathFilters(Lists.newArrayList("Points")).setMessage("message").call();
+        assertNotNull(commit);
+        Optional<RevFeatureType> ft = geogit.command(ResolveFeatureType.class)
+                .setRefSpec("HEAD:Points/" + idP1).call();
+        assertTrue(ft.isPresent());
     }
 
     @Test
