@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+
+  <!-- see also: RollingFileAppender -->
+  <appender name="org.geogit.api.user.logger" class="org.apache.log4j.FileAppender">
+    <param name="File" value="${user.home}/.geogit-log/user/org.geogit.api.log" />
+    <param name="Append" value="false" /><!-- true? -->
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: %c{2} - %m%n" />
+    </layout>
+  </appender>
+
+  <appender name="org.geogit.api.stack.logger" class="org.apache.log4j.FileAppender">
+    <param name="File" value="${user.home}/.geogit-log/stacktraces/org.geogit.api.log" />
+    <param name="Append" value="false" />
+    <param name="Threshold" value="TRACE" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: (%F:%L) - %c{2} - %m%n" />
+    </layout>
+  </appender>
+
+  <appender name="org.geogit.cli.user.logger" class="org.apache.log4j.FileAppender">
+    <param name="File" value="${user.home}/.geogit-log/user/org.geogit.cli.log" />
+    <param name="Append" value="false" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: %c{2} - %m%n" />
+    </layout>
+  </appender>
+
+  <appender name="org.geogit.cli.stack.logger" class="org.apache.log4j.FileAppender">
+    <param name="File" value="${user.home}/.geogit-log/stacktraces/org.geogit.cli.log" />
+    <param name="Append" value="false" />
+    <param name="Threshold" value="TRACE" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: (%F:%L) - %c{2} - %m%n" />
+    </layout>
+  </appender>
+  
+  <appender name="org.geogit.geotools.user.logger" class="org.apache.log4j.FileAppender">
+    <param name="File" value="${user.home}/.geogit-log/user/org.geogit.geotools.log" />
+    <param name="Append" value="false" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: %c{2} - %m%n" />
+    </layout>
+  </appender>
+  
+  <appender name="org.geogit.geotools.stack.logger" class="org.apache.log4j.FileAppender">
+  	<param name="File" value="${user.home}/.geogit-log/stacktraces/org.geogit.geotools.log" />
+  	<param name="Append" value="false" />
+  	<param name="Threshold" value="TRACE" />
+  	<layout class="org.apache.log4j.PatternLayout">
+  		<param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: %c{2} - %m%n" />
+  	</layout>
+  </appender>
+  
+  <appender name="org.geogit.performance.logger" class="org.apache.log4j.FileAppender">
+  	<param name="File" value="${user.home}/.geogit-log/perf/org.geogit.performance.log" />
+  	<layout class="org.apache.log4j.PatternLayout">
+  		<param name="ConversionPattern" value="%d{ABSOLUTE} %m%n" />
+  	</layout>
+  </appender>
+
+  <appender name="console" class="org.apache.log4j.ConsoleAppender">
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ABSOLUTE} %p [%t]: (%F:%L) - %C{2} - %m%n" />
+    </layout>
+  </appender>
+  
+  <category name="org.perf4j.TimingLogger" additivity="false">
+  	<level value="INFO" />
+  	<appender-ref ref="org.geogit.performance.logger" />
+  </category>
+
+  <category name="org.geogit.api" additivity="false">
+    <priority value="INFO" />
+    <appender-ref ref="org.geogit.api.user.logger" />
+    <appender-ref ref="org.geogit.api.stack.logger" />
+  </category>
+  
+  <category name="org.geogit.cli" additivity="false">
+  	<priority value="INFO" />
+  	<appender-ref ref="org.geogit.cli.user.logger" />
+  	<appender-ref ref="org.geogit.cli.stack.logger" />
+  </category>
+  
+  <category name="org.geogit.geotools" additivity="false">
+	<priority value="INFO" />
+	<appender-ref ref="org.geogit.geotools.user.logger" />
+	<appender-ref ref="org.geogit.geotools.stack.logger" />
+  </category>
+
+  <root>
+    <priority value="fatal" />
+    <!--
+    suppress logging for unspecified classes
+    with artificially high priority
+    and no specified appender
+    -->
+  </root>
+  
+</log4j:configuration>
