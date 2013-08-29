@@ -17,10 +17,9 @@ import javax.annotation.Nullable;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.CommandFailedException;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.cli.RequiresRepository;
+import org.geogit.geotools.cli.porcelain.AbstractShpCommand;
 import org.geogit.geotools.plumbing.ExportOp;
 import org.geogit.geotools.plumbing.GeoToolsOpException;
-import org.geogit.geotools.porcelain.AbstractShpCommand;
 import org.geogit.osm.internal.MappedFeature;
 import org.geogit.osm.internal.Mapping;
 import org.geogit.osm.internal.MappingRule;
@@ -44,7 +43,6 @@ import com.vividsolutions.jts.geom.Point;
  * 
  * @see ExportOp
  */
-@RequiresRepository
 @Parameters(commandNames = "export-shp", commandDescription = "Export OSM data to shapefile, using a data mapping")
 public class OSMExportShp extends AbstractShpCommand implements CLICommand {
 

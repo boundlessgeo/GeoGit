@@ -21,7 +21,7 @@ import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.CommandFailedException;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.cli.RequiresRepository;
+import org.geogit.cli.InvalidParameterException;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
@@ -64,7 +64,6 @@ import com.google.common.base.Suppliers;
  * 
  * @see ResetOp
  */
-@RequiresRepository
 @Parameters(commandNames = { "reset" }, commandDescription = "Reset current HEAD to the specified state, optionally modifying index and working tree to match")
 public class Reset extends AbstractCommand implements CLICommand {
 
@@ -151,13 +150,13 @@ public class Reset extends AbstractCommand implements CLICommand {
         }
         if (mixed) {
             if (mode != ResetMode.NONE) {
-                throw new IllegalArgumentException("You may only specify one mode.");
+                throw new InvalidParameterException("You may only specify one mode.");
             }
             mode = ResetMode.MIXED;
         }
         if (soft) {
             if (mode != ResetMode.NONE) {
-                throw new IllegalArgumentException("You may only specify one mode.");
+                throw new InvalidParameterException("You may only specify one mode.");
             }
             mode = ResetMode.SOFT;
         }

@@ -14,10 +14,9 @@ import javax.annotation.Nullable;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.CommandFailedException;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.cli.RequiresRepository;
+import org.geogit.geotools.cli.porcelain.AbstractSLCommand;
 import org.geogit.geotools.plumbing.ExportOp;
 import org.geogit.geotools.plumbing.GeoToolsOpException;
-import org.geogit.geotools.porcelain.AbstractSLCommand;
 import org.geogit.osm.internal.MappedFeature;
 import org.geogit.osm.internal.Mapping;
 import org.geogit.osm.internal.MappingRule;
@@ -41,7 +40,6 @@ import com.vividsolutions.jts.awt.PointShapeFactory.Point;
  * 
  * @see ExportOp
  */
-@RequiresRepository
 @Parameters(commandNames = "export-sl", commandDescription = "Export OSM data to a Spatialite database, using a data mapping")
 public class OSMExportSL extends AbstractSLCommand implements CLICommand {
 

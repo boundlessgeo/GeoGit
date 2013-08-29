@@ -19,7 +19,7 @@ import org.geogit.api.porcelain.AddOp;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.cli.RequiresRepository;
+import org.geogit.cli.InvalidParameterException;
 import org.geogit.repository.WorkingTree;
 
 import com.beust.jcommander.Parameter;
@@ -49,7 +49,6 @@ import com.beust.jcommander.Parameters;
  * 
  * @see AddOp
  */
-@RequiresRepository
 @Parameters(commandNames = "add", commandDescription = "Add features to the staging area")
 public class Add extends AbstractCommand implements CLICommand {
 
@@ -78,7 +77,7 @@ public class Add extends AbstractCommand implements CLICommand {
         if (patterns.size() == 1) {
             pathFilter = patterns.get(0);
         } else if (patterns.size() > 1) {
-            throw new IllegalArgumentException("Only a single path is supported so far");
+            throw new InvalidParameterException("Only a single path is supported so far");
         }
 
         List<Conflict> conflicts = geogit.command(ConflictsReadOp.class).call();

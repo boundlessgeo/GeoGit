@@ -22,7 +22,9 @@ import org.geogit.api.porcelain.ConfigOp.ConfigScope;
 import org.geogit.api.porcelain.InitOp;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
+import org.geogit.cli.CommandFailedException;
 import org.geogit.cli.GeogitCLI;
+import org.geogit.cli.RequiresRepository;
 import org.geogit.repository.Repository;
 import org.neo4j.kernel.impl.util.FileUtils;
 
@@ -52,6 +54,7 @@ import com.google.common.base.Throwables;
  * 
  * @see CloneOp
  */
+@RequiresRepository(false)
 @Parameters(commandNames = "clone", commandDescription = "Clone a repository into a new directory")
 public class Clone extends AbstractCommand implements CLICommand {
 
@@ -92,7 +95,7 @@ public class Clone extends AbstractCommand implements CLICommand {
                 }
                 repoDir = f;
                 if (!repoDir.exists() && !repoDir.mkdirs()) {
-                    throw new IllegalStateException("Can't create directory "
+                    throw new CommandFailedException("Can't create directory "
                             + repoDir.getAbsolutePath());
                 }
 
@@ -133,7 +136,7 @@ public class Clone extends AbstractCommand implements CLICommand {
 
                 URL envHome = new ResolveGeogitDir(cli.getPlatform()).call();
                 if (envHome == null) {
-                    throw new IllegalStateException("Not inside a geogit directory");
+                    throw new CommandFailedException("Not inside a geogit directory");
                 }
                 if (!"file".equals(envHome.getProtocol())) {
                     throw new UnsupportedOperationException(
@@ -153,7 +156,7 @@ public class Clone extends AbstractCommand implements CLICommand {
                         .call();
                 sparse = true;
             } catch (Exception e) {
-                throw new IllegalStateException("Unable to copy filter file at path " + filterFile
+                throw new CommandFailedException("Unable to copy filter file at path " + filterFile
                         + " to the new repository.", e);
             }
         }
