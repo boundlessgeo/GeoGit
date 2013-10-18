@@ -1,0 +1,14 @@
+language: java
+jdk:
+  - openjdk6
+  - openjdk7
+  - oraclejdk7
+services:
+  - mongodb
+notifications:
+  email: false
+  irc:
+    channels:
+      - "chat.freenode.net#geogit"
+    on_success: never
+    on_failure: always
