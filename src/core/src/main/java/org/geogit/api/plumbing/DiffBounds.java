@@ -6,24 +6,23 @@
 package org.geogit.api.plumbing;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.NodeRef;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffObjectCount;
 
 import com.vividsolutions.jts.geom.Envelope;
 
 /**
- *  Computes the bounds of the difference between the two trees instead of the actual diffs.
+ * Computes the bounds of the difference between the two trees instead of the actual diffs.
  * 
  */
 
-public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount>{
+public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
 
     private List<DiffEntry> entries;
+
     @Override
     public DiffObjectCount call() {
         // TODO Auto-generated method stub
@@ -32,30 +31,33 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount>{
 
     // constructor to initialize the entries
     public DiffBounds(List<DiffEntry> inputEntries) {
-        entries = inputEntries;
+        entries = new ArrayList<DiffEntry>(inputEntries);
     }
-
 
     /**
      * 
      * @param entries - A list containing the DiffEntries
      * @return Envelope - It represents the final bounds
      */
-    public Envelope getDiffBounds(Iterator<DiffEntry> entries) {
+    public Envelope getDiffBounds() {
 
         List<Envelope> diffBounds = new ArrayList<Envelope>();
-        DiffEntry entry = new DiffEntry();
-        while (entries.hasNext()) {
-            entry = entries.next();
-            NodeRef oldObject = entry.getOldObject();
+        List<Envelope> envelopeList = new ArrayList<Envelope>();
+        
+        for (DiffEntry entry : entries) {
             Envelope oldEnvelope = new Envelope();
-            oldObject.expand(oldEnvelope);
+            entry.expand(oldEnvelope);
+            envelopeList.add(oldEnvelope);
+        }
 
-            NodeRef newObject = entry.getNewObject();
-            Envelope newEnvelope = new Envelope();
-            newObject.expand(newEnvelope);
+        double maxX, maxY, minX, minY;
+
+        for (Envelope currEnvelope : envelopeList) {
 
         }
+
+        return new Envelope();
+
     }
 
 }
