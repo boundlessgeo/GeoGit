@@ -29,6 +29,10 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
         // TODO Auto-generated method stub
         return null;
     }
+    
+    public DiffBounds(){
+    	
+    }
 
     // constructor to initialize the entries
     public DiffBounds(List<DiffEntry> entries) {

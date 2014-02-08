@@ -31,44 +31,50 @@ public class DiffBoundsTest extends RepositoryTestCase {
     @Test
     public void testDiffBetweenDifferentTrees() {
 
-       Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD^").setNewVersion("HEAD").call();
-       
-       List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-       
-       DiffEntry entry;
-       
-       while(entries.hasNext()){
-    	   entry = entries.next();
-    	   entriesList.add(entry);
-       }
+        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD^")
+                .setNewVersion("HEAD").call();
 
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
-        					.setDiffEntries(entriesList)
-        					.computeDiffBounds();
-       				
+        List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
+
+        DiffEntry entry;
+
+        while (entries.hasNext()) {
+            entry = entries.next();
+            entriesList.add(entry);
+        }
+
+        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).setDiffEntries(entriesList)
+                .computeDiffBounds();
+
         System.out.println(diffBoundsEnvelope);
 
     }
 
     @Test
     public void testDiffBetweenIdenticalTrees() {
-    	 Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD").setNewVersion("HEAD").call();
-         
-         List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-         
-         DiffEntry entry;
-         
-         while(entries.hasNext()){
-      	   entry = entries.next();
-      	   entriesList.add(entry);
-         }
+        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD")
+                .setNewVersion("HEAD").call();
 
-         Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
-          					.setDiffEntries(entriesList)
-          					.computeDiffBounds();
-         			
+        List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
+
+        DiffEntry entry;
+
+        while (entries.hasNext()) {
+            entry = entries.next();
+            entriesList.add(entry);
+        }
+
+        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).setDiffEntries(entriesList)
+                .computeDiffBounds();
+
         assertNull(diffBoundsEnvelope);
         System.out.println(diffBoundsEnvelope);
+
+        assertNull(diffBoundsEnvelope.getMinX());
+        assertNull(diffBoundsEnvelope.getMaxX());
+        assertNull(diffBoundsEnvelope.getMinY());
+        assertNull(diffBoundsEnvelope.getMaxY());
+
     }
 
     @Test
