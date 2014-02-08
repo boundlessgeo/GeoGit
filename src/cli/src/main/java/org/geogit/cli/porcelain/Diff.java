@@ -14,6 +14,7 @@ import org.geogit.api.GeoGIT;
 import org.geogit.api.plumbing.DiffBounds;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.porcelain.DiffOp;
+import org.geogit.cli.porcelain.BoundsDiffPrinter;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
