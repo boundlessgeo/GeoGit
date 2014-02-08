@@ -6,7 +6,6 @@
 package org.geogit.cli.porcelain;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -77,8 +76,18 @@ public class Diff extends AbstractCommand implements CLICommand {
         String newVersion = resolveNewVersion();
 
         diff.setOldVersion(oldVersion).setNewVersion(newVersion).setCompareIndex(cached);
+        
 
         Iterator<DiffEntry> entries;
+        
+        if (bounds) {
+            DiffBounds diffBounds = new DiffBounds(diff);
+            Envelope boundsEnvelope = diffBounds.computeDiffBounds();
+            BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
+            boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
+            return;
+        }
+        
         if (paths.isEmpty()) {
             entries = diff.setProgressListener(cli.getProgressListener()).call();
         } else {
@@ -102,20 +111,7 @@ public class Diff extends AbstractCommand implements CLICommand {
             printer = new FullDiffPrinter(nogeom, false);
         }
 
-        if (bounds) {
-            List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-            while (entries.hasNext()) {
-                DiffEntry entry = entries.next();
-                entriesList.add(entry);
-            }
-
-            DiffBounds diffBounds = new DiffBounds(entriesList);
-            Envelope boundsEnvelope = diffBounds.computeDiffBounds();
-            BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
-            boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
-
-            return;
-        }
+        
 
         DiffEntry entry;
         while (entries.hasNext()) {
