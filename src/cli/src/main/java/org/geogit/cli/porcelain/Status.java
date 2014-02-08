@@ -25,8 +25,6 @@ import org.geogit.api.porcelain.StatusSummary;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
-import org.geogit.repository.StagingArea;
-import org.geogit.repository.WorkingTree;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
@@ -65,15 +63,11 @@ public class Status extends AbstractCommand implements CLICommand {
         ConsoleReader console = cli.getConsole();
         GeoGIT geogit = cli.getGeogit();
 
-        final StagingArea index = geogit.getRepository().getIndex();
-
-        final WorkingTree workTree = geogit.getRepository().getWorkingTree();
-
 //        final long countStaged = index.countStaged(null).getCount();
 //        final int countConflicted = index.countConflicted(null);
 //        final long countUnstaged = workTree.countUnstaged(null).getCount();
         
-        StatusOp op = new StatusOp(index,workTree,geogit);
+        StatusOp op = geogit.command(StatusOp.class);
         StatusSummary summary = op.call();
         
         
