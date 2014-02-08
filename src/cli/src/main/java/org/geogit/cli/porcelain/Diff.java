@@ -13,7 +13,6 @@ import org.geogit.api.GeoGIT;
 import org.geogit.api.plumbing.DiffBounds;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.porcelain.DiffOp;
-import org.geogit.cli.porcelain.BoundsDiffPrinter;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
@@ -81,8 +80,8 @@ public class Diff extends AbstractCommand implements CLICommand {
         Iterator<DiffEntry> entries;
         
         if (bounds) {
-            DiffBounds diffBounds = new DiffBounds(diff);
-            Envelope boundsEnvelope = diffBounds.computeDiffBounds();
+            DiffBounds diffBounds = new DiffBounds();
+            Envelope boundsEnvelope = diffBounds.computeDiffBounds(diff.call());
             BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
             boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
             return;
