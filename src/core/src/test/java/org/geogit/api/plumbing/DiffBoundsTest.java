@@ -66,10 +66,8 @@ public class DiffBoundsTest extends RepositoryTestCase {
           					.setDiffEntries(entriesList)
           					.computeDiffBounds();
          				        
-        assertNull(diffBoundsEnvelope.getMinX());
-        assertNull(diffBoundsEnvelope.getMaxX());
-        assertNull(diffBoundsEnvelope.getMinY());
-        assertNull(diffBoundsEnvelope.getMaxY());
+        assertTrue(diffBoundsEnvelope.isNull());
+
     }
 
     @Test
