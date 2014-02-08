@@ -54,7 +54,10 @@ public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
 //          console.println("#");
           
           // print(console, staged, Color.GREEN, countStaged);
-          summary.setMessage("blabla");
+          String msg = "# Changes to be committed:" +
+        		  	   "#   (use \"geogit reset HEAD <path/to/fid>...\" to unstage)" + 
+        		  	   "#";
+          summary.setMessage(msg);
           summary.setStaged(staged);
           
       }
@@ -65,7 +68,10 @@ public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
 //          console.println("#   (use \"geogit add/rm <path/to/fid>...\" as appropriate to mark resolution");
 //          console.println("#");
           // printUnmerged(console, conflicts, Color.RED, countConflicted);
-          summary.setMessage("blabla");
+          String msg = "# Unmerged paths:\n" +
+	        		   "#   (use \"geogit add/rm <path/to/fid>...\" as appropriate to mark resolution\n"+
+	        		   "#";
+          summary.setMessage(msg);
           summary.setConflicts(conflicts);
       }
 
@@ -77,7 +83,11 @@ public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
 //          console.println("#   (use \"geogit checkout -- <path/to/fid>...\" to discard changes in working directory");
 //          console.println("#");
           // print(console, unstaged, Color.RED, countUnstaged);
-          summary.setMessage("blabla");
+          String msg = "# Changes not staged for commit:\n" +
+	        		   "#   (use \"geogit add <path/to/fid>...\" to update what will be committed\n" +
+	        		   "#   (use \"geogit checkout -- <path/to/fid>...\" to discard changes in working directory" + 
+	        		   "#";
+          summary.setMessage(msg);
           summary.setUnstaged(unstaged);
       }
       
