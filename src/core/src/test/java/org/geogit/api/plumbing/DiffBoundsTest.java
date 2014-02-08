@@ -10,8 +10,6 @@ import java.util.List;
 
 import org.geogit.api.NodeRef;
 import org.geogit.api.plumbing.diff.DiffEntry;
-import org.geogit.api.plumbing.diff.FeatureDiff;
-import org.geogit.api.plumbing.diff.diff_match_patch.Diff;
 import org.geogit.api.porcelain.CommitOp;
 import org.geogit.api.porcelain.DiffOp;
 import org.geogit.api.porcelain.FeatureNodeRefFromRefspec;
@@ -67,11 +65,11 @@ public class DiffBoundsTest extends RepositoryTestCase {
          Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
           					.setDiffEntries(entriesList)
           					.computeDiffBounds();
-         				
-        System.out.println(diffBoundsEnvelope);
-        
-        assertNull(diffBoundsEnvelope);
-        System.out.println(diffBoundsEnvelope);
+         				        
+        assertNull(diffBoundsEnvelope.getMinX());
+        assertNull(diffBoundsEnvelope.getMaxX());
+        assertNull(diffBoundsEnvelope.getMinY());
+        assertNull(diffBoundsEnvelope.getMaxY());
     }
 
     @Test

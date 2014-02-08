@@ -19,12 +19,11 @@ import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
 
-import com.vividsolutions.jts.geom.Envelope;
-
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.vividsolutions.jts.geom.Envelope;
 
 /**
  * Shows changes between commits, commits and working tree, etc.
@@ -102,18 +101,20 @@ public class Diff extends AbstractCommand implements CLICommand {
         } else {
             printer = new FullDiffPrinter(nogeom, false);
         }
-        
-        if(bounds){
-        	List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-        	while(entries.hasNext()){
-        		DiffEntry entry = entries.next();
-        		entriesList.add(entry);
-        	}
-        	DiffBounds diffBounds = new DiffBounds(entriesList);
-        	Envelope boundsEnvelope = diffBounds.getDiffBounds();
-        	BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
-        	boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
-        	return;
+
+        if (bounds) {
+            List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
+            while (entries.hasNext()) {
+                DiffEntry entry = entries.next();
+                entriesList.add(entry);
+            }
+
+            DiffBounds diffBounds = new DiffBounds(entriesList);
+            Envelope boundsEnvelope = diffBounds.computeDiffBounds();
+            BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
+            boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
+
+            return;
         }
 
         DiffEntry entry;

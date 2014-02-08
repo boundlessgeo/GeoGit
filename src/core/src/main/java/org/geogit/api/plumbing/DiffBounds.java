@@ -29,6 +29,10 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
         // TODO Auto-generated method stub
         return null;
     }
+    
+    public DiffBounds(){
+    	
+    }
 
     // constructor to initialize the entries
     public DiffBounds(List<DiffEntry> entries) {
@@ -50,7 +54,7 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
      * @param entries - A list containing the DiffEntries
      * @return Envelope - representing the final bounds
      */
-    public Envelope getDiffBounds() {
+    public Envelope computeDiffBounds() {
 
         List<Envelope> envelopeList = new ArrayList<Envelope>();
 
@@ -77,7 +81,7 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
             }
 
             if (same)
-                return firstEnvelope;
+                return new Envelope(null, null);
             else {
                 ListIterator<Envelope> newEnvIterator = envelopeList.listIterator(1);
                 Envelope currEnvelope;
@@ -105,7 +109,7 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
         }
 
         else
-            return new Envelope();
+            return new Envelope(null, null);
 
     }
 }
