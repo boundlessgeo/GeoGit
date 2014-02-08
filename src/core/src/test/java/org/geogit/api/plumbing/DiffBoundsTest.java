@@ -47,11 +47,15 @@ public class DiffBoundsTest extends RepositoryTestCase {
                 .computeDiffBounds();
 
         System.out.println(diffBoundsEnvelope);
+<<<<<<< HEAD
 
+=======
+>>>>>>> noctella/master
     }
 
     @Test
     public void testDiffBetweenIdenticalTrees() {
+<<<<<<< HEAD
         Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD")
                 .setNewVersion("HEAD").call();
 
@@ -74,6 +78,24 @@ public class DiffBoundsTest extends RepositoryTestCase {
         assertNull(diffBoundsEnvelope.getMaxX());
         assertNull(diffBoundsEnvelope.getMinY());
         assertNull(diffBoundsEnvelope.getMaxY());
+=======
+    	 Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD").setNewVersion("HEAD").call();
+         
+         List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
+         
+         DiffEntry entry;
+         
+         while(entries.hasNext()){
+      	   entry = entries.next();
+      	   entriesList.add(entry);
+         }
+
+         Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
+          					.setDiffEntries(entriesList)
+          					.computeDiffBounds();
+         				        
+        assertTrue(diffBoundsEnvelope.isNull());
+>>>>>>> noctella/master
 
     }
 

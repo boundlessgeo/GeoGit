@@ -111,7 +111,9 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
         else if (envelopeList.size() == 1)
             return envelopeList.get(0);
         else
-            return new Envelope(null, null);
+        	Envelope envelope = new Envelope();
+        	envelope.setToNull();
+            return envelope;
 
     }
 }
