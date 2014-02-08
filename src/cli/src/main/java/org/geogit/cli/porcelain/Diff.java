@@ -54,6 +54,9 @@ public class Diff extends AbstractCommand implements CLICommand {
     @Parameter(names = "--nogeom", description = "Do not show detailed coordinate changes in geometries")
     private boolean nogeom;
 
+    @Parameter(names = "--bounds", description = "Show only the bounds of the difference between the two trees")
+    private boolean bounds;
+
     /**
      * Executes the diff command with the specified options.
      */
