@@ -4,9 +4,7 @@
  */
 package org.geogit.api.plumbing;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 import org.geogit.api.NodeRef;
 import org.geogit.api.plumbing.diff.DiffEntry;
@@ -38,13 +36,11 @@ public class DiffBoundsTest extends RepositoryTestCase {
     @Test
     public void testDiffBetweenDifferentTrees() {
 
-        // Iterable<DiffEntry> entries =
-        // geogit.command(DiffOp.class).setOldVersion("HEAD~3").setNewVersion("HEAD").call();
-        DiffOp diff = geogit.command(DiffOp.class);
-        diff.setOldVersion("HEAD~3").setNewVersion("HEAD");
+        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3")
+                .setNewVersion("HEAD").call();
 
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).setDiffEntries(diff)
-                .computeDiffBounds();
+        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).computeDiffBounds(entries);
+
         System.out.println(diffBoundsEnvelope);
 
     }
@@ -55,17 +51,7 @@ public class DiffBoundsTest extends RepositoryTestCase {
         Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD")
                 .setNewVersion("HEAD").call();
 
-        List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-
-        DiffEntry entry;
-
-        while (entries.hasNext()) {
-            entry = entries.next();
-            entriesList.add(entry);
-        }
-
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).setDiffEntries(entriesList)
-                .computeDiffBounds();
+        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).computeDiffBounds(entries);
 
         assertTrue(diffBoundsEnvelope.isNull());
 
