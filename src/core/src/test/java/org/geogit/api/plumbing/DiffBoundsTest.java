@@ -37,12 +37,10 @@ public class DiffBoundsTest extends RepositoryTestCase {
     @Test
     public void testDiffBetweenDifferentTrees() {
 
-       Iterable<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3").setNewVersion("HEAD").call();
+       Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3").setNewVersion("HEAD").call();
        
-      
         Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
-        					.setDiffEntries(entries)
-        					.computeDiffBounds();
+        					.computeDiffBounds(entries);
        				
         System.out.println(diffBoundsEnvelope);
     }
@@ -51,19 +49,9 @@ public class DiffBoundsTest extends RepositoryTestCase {
     public void testDiffBetweenIdenticalTrees() {
     	 Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD").setNewVersion("HEAD").call();
          
-         List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-         
-         DiffEntry entry;
-         
-         while(entries.hasNext()){
-      	   entry = entries.next();
-      	   entriesList.add(entry);
-         }
-
          Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
-          					.setDiffEntries(entriesList)
-          					.computeDiffBounds();
-         				        
+         					.computeDiffBounds(entries);
+        				
         assertTrue(diffBoundsEnvelope.isNull());
 
     }
