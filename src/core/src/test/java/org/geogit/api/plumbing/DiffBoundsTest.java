@@ -23,8 +23,10 @@ public class DiffBoundsTest extends RepositoryTestCase {
 
     @Override
     protected void setUpInternal() throws Exception {
-        populate(true, points1);
+        populate(true, points1, points3);
         insertAndAdd(points1_modified);
+
+
         geogit.command(CommitOp.class).call();
     }
 
