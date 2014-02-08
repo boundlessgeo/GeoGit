@@ -16,13 +16,10 @@ import org.geogit.api.GeoGIT;
 import org.geogit.api.NodeRef;
 import org.geogit.api.Ref;
 import org.geogit.api.SymRef;
-import org.geogit.api.plumbing.DiffIndex;
-import org.geogit.api.plumbing.DiffWorkTree;
 import org.geogit.api.plumbing.RefParse;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffEntry.ChangeType;
 import org.geogit.api.plumbing.merge.Conflict;
-import org.geogit.api.plumbing.merge.ConflictsReadOp;
 import org.geogit.api.porcelain.StatusOp;
 import org.geogit.api.porcelain.StatusSummary;
 import org.geogit.cli.AbstractCommand;
@@ -90,13 +87,16 @@ public class Status extends AbstractCommand implements CLICommand {
             console.println("# Not currently on any branch.");
         }
         
-        print(console,countStaged,countConflicted,countUnstaged,summary);
+        print(console, summary);
        
     }
     
-    private void print(ConsoleReader console,long countStaged ,int countConflicted,long countUnstaged ,StatusSummary summary){
+    private void print(ConsoleReader console,StatusSummary summary) throws IOException{
+    	long countStaged = summary.getCountStaged();
+    	long countUnstaged = summary.getCountUnstaged();
+    	int countConflicted = summary.getCountConflicts();
     	
-      if (countStaged + countUnstaged + countConflicted == 0) {
+      if (summary.getCountStaged() + countUnstaged + countConflicted == 0) {
     	  print(console,summary.getStaged(),Color.GREEN, countStaged + countUnstaged + countConflicted);
 	  }
 	
@@ -105,7 +105,7 @@ public class Status extends AbstractCommand implements CLICommand {
 	  }
 	
 	  if (countConflicted > 0) {
-		  printUnmerged(console,summary.getConflicts(),Color.RED, countStaged + countUnstaged + countConflicted);
+		  printUnmerged(console,summary.getConflicts(),Color.RED, (int) (countStaged + countUnstaged + countConflicted));
 	  }
 	
 	  if (countUnstaged > 0) {

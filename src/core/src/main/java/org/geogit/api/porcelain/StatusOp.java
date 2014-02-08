@@ -3,29 +3,22 @@ package org.geogit.api.porcelain;
 import java.util.Iterator;
 import java.util.List;
 
-import org.fusesource.jansi.Ansi.Color;
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.GeoGIT;
-import org.geogit.api.Ref;
-import org.geogit.api.SymRef;
 import org.geogit.api.plumbing.DiffIndex;
 import org.geogit.api.plumbing.DiffWorkTree;
-import org.geogit.api.plumbing.RefParse;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.merge.Conflict;
 import org.geogit.api.plumbing.merge.ConflictsReadOp;
-import org.geogit.cli.porcelain.ConsoleReader;
 import org.geogit.repository.StagingArea;
 import org.geogit.repository.WorkingTree;
 
-import com.google.common.base.Optional;
-
 public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
+  private GeoGIT geogit;
+  
   private long countStaged;
   private int countConflicted;
   private long countUnstaged;
-  
-  private GeoGIT geogit;
   
   public StatusOp(StagingArea index, WorkingTree workTree, GeoGIT geogit) {
     this.countStaged = index.countStaged(null).getCount();
@@ -38,16 +31,10 @@ public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
   public StatusSummary call() {
 	  
 	  StatusSummary summary = new StatusSummary();
-	  
-	  final Optional<Ref> currHead = geogit.command(RefParse.class).setName(Ref.HEAD).call();
-      checkParameter(currHead.isPresent(), "Repository has no HEAD.");
       
-
-
-      if (countStaged + countUnstaged + countConflicted == 0) {
-    	  summary.setMessage("nothing to commit (working directory clean)");
-          
-      }
+    if (countStaged + countUnstaged + countConflicted == 0) {
+      summary.setMessage("nothing to commit (working directory clean)");
+    }
 
       if (countStaged > 0) {
           Iterator<DiffEntry> staged = geogit.command(DiffIndex.class).setReportTrees(true)
@@ -93,6 +80,10 @@ public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
           summary.setMessage(msg);
           summary.setUnstaged(unstaged);
       }
+      
+      summary.setCountStaged(this.countStaged);
+      summary.setCountUnstaged(this.countUnstaged);
+      summary.setCountConflicts(this.countConflicted);
       
       return summary;
   }

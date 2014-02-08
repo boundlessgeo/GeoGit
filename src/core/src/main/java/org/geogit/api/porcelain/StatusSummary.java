@@ -1,15 +1,9 @@
 package org.geogit.api.porcelain;
 
-import java.awt.Color;
-import java.io.Console;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import jline.console.ConsoleReader;
-
-import org.geogit.api.GeoGIT;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.merge.Conflict;
 
@@ -18,6 +12,9 @@ public class StatusSummary {
   private Iterator<DiffEntry> staged, unstaged;
   private String message;
   
+  private long countStaged;
+  private long countUnstaged;
+  private int countConflicts;
   
   
 	public String getMessage() {
@@ -58,6 +55,30 @@ public class StatusSummary {
     this.staged = null;
     this.unstaged = null;
     
+  }
+
+  public long getCountStaged() {
+    return countStaged;
+  }
+
+  public void setCountStaged(long countStaged) {
+    this.countStaged = countStaged;
+  }
+
+  public long getCountUnstaged() {
+    return countUnstaged;
+  }
+
+  public void setCountUnstaged(long countUnstaged2) {
+    this.countUnstaged = countUnstaged2;
+  }
+
+  public int getCountConflicts() {
+    return countConflicts;
+  }
+
+  public void setCountConflicts(int countConflicts) {
+    this.countConflicts = countConflicts;
   }
   
 }
