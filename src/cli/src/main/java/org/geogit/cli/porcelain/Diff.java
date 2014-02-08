@@ -18,12 +18,11 @@ import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
 
-import com.vividsolutions.jts.geom.Envelope;
-
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.vividsolutions.jts.geom.Envelope;
 
 /**
  * Shows changes between commits, commits and working tree, etc.
@@ -108,9 +107,9 @@ public class Diff extends AbstractCommand implements CLICommand {
         		DiffEntry entry = entries.next();
         		entriesList.add(entry);
         	}
-        	DiffBounds diffBounds = new DiffBounds(entries);
+            DiffBounds diffBounds = new DiffBounds(entriesList);
         	Envelope bounds = diffBounds.getDiffBounds();
-        	BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
+            boundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
         	boundsDiffPrinter.print(geogit, cli.getConsole(), envelope);
         	return;
         }
