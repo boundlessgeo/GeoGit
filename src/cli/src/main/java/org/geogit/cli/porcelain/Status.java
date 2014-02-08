@@ -72,12 +72,12 @@ public class Status extends AbstractCommand implements CLICommand {
 
         final WorkingTree workTree = geogit.getRepository().getWorkingTree();
 
-        final long countStaged = index.countStaged(null).getCount();
-        final int countConflicted = index.countConflicted(null);
-        final long countUnstaged = workTree.countUnstaged(null).getCount();
+//        final long countStaged = index.countStaged(null).getCount();
+//        final int countConflicted = index.countConflicted(null);
+//        final long countUnstaged = workTree.countUnstaged(null).getCount();
         
-        StatusOp op = new StatusOp(index,workTree);
-        StatusSummary summary = op.call(geogit,console,countStaged,countConflicted,countUnstaged);
+        StatusOp op = new StatusOp(index,workTree,geogit);
+        StatusSummary summary = op.call();
         
         
         final Optional<Ref> currHead = geogit.command(RefParse.class).setName(Ref.HEAD).call();

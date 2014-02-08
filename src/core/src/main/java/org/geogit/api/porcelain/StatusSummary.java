@@ -56,6 +56,8 @@ public class StatusSummary {
   public StatusSummary() {
     this.conflicts = new ArrayList<Conflict>();
     this.staged = null;
+    this.unstaged = null;
+    
   }
   
 }

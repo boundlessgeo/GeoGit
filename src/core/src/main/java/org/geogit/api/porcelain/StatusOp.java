@@ -21,18 +21,21 @@ import org.geogit.repository.WorkingTree;
 import com.google.common.base.Optional;
 
 public class StatusOp extends AbstractGeoGitOp<StatusSummary> {
-  private long numStaged;
-  private int numConflicts;
-  private long numUnstaged;
+  private long countStaged;
+  private int countConflicted;
+  private long countUnstaged;
   
-  public StatusOp(StagingArea index, WorkingTree workTree) {
-    this.numStaged = index.countStaged(null).getCount();
-    this.numConflicts = index.countConflicted(null);
-    this.numUnstaged = workTree.countUnstaged(null).getCount();
+  private GeoGIT geogit;
+  
+  public StatusOp(StagingArea index, WorkingTree workTree, GeoGIT geogit) {
+    this.countStaged = index.countStaged(null).getCount();
+    this.countConflicted = index.countConflicted(null);
+    this.countUnstaged = workTree.countUnstaged(null).getCount();
+    this.geogit = geogit;
   }
 
   @Override
-  public StatusSummary call(GeoGIT geogit,long countStaged,int countConflicted,long countUnstaged) {
+  public StatusSummary call() {
 	  
 	  StatusSummary summary = new StatusSummary();
 	  
