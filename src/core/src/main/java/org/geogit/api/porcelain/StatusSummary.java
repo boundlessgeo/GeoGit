@@ -18,30 +18,44 @@ public class StatusSummary {
   private Iterator<DiffEntry> staged, unstaged;
   private String message;
   
+  
+  
+	public String getMessage() {
+	return message;
+	}
+	
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+	public List<Conflict> getConflicts() {
+		return conflicts;
+	}
+	
+	public void setConflicts(List<Conflict> conflicts) {
+		this.conflicts = conflicts;
+	}
+	
+	public Iterator<DiffEntry> getStaged() {
+		return staged;
+	}
+	
+	public void setStaged(Iterator<DiffEntry> staged) {
+		this.staged = staged;
+	}
+	
+	public Iterator<DiffEntry> getUnstaged() {
+		return unstaged;
+	}
+	
+	public void setUnstaged(Iterator<DiffEntry> unstaged) {
+		this.unstaged = unstaged;
+	}
+
+	
   public StatusSummary() {
     this.conflicts = new ArrayList<Conflict>();
     this.staged = null;
-    this.message = "";
   }
   
-  public String getMessage() {
-    return this.message;
-  }
-  
-  public void setMessage(String message) {
-    this.message = message;
-  }
-  
-  public void print(Console console, GeoGIT geogit, Color color) {
-    System.out.println("TODO");
-    return;
-  }
-  
-  public void printUnmerged(final ConsoleReader console,
-                            final List<Conflict> conflicts,
-                            final Color color,
-                            final int total) throws IOException {
-    
-    
-  }
 }
