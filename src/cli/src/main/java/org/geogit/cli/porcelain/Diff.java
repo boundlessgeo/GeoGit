@@ -6,15 +6,19 @@
 package org.geogit.cli.porcelain;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import org.geogit.api.GeoGIT;
+import org.geogit.api.plumbing.DiffBounds;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.porcelain.DiffOp;
 import org.geogit.cli.AbstractCommand;
 import org.geogit.cli.CLICommand;
 import org.geogit.cli.GeogitCLI;
+
+import com.vividsolutions.jts.geom.Envelope;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
@@ -96,6 +100,19 @@ public class Diff extends AbstractCommand implements CLICommand {
             printer = new SummaryDiffPrinter();
         } else {
             printer = new FullDiffPrinter(nogeom, false);
+        }
+        
+        if(bounds){
+        	List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
+        	while(entries.hasNext()){
+        		DiffEntry entry = entries.next();
+        		entriesList.add(entry);
+        	}
+        	DiffBounds diffBounds = new DiffBounds(entries);
+        	Envelope bounds = diffBounds.getDiffBounds();
+        	BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
+        	boundsDiffPrinter.print(geogit, cli.getConsole(), envelope);
+        	return;
         }
 
         DiffEntry entry;
