@@ -9,14 +9,9 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.geogit.api.NodeRef;
-<<<<<<< HEAD
-=======
 import org.geogit.api.plumbing.diff.DiffEntry;
-import org.geogit.api.plumbing.diff.FeatureDiff;
-import org.geogit.api.plumbing.diff.diff_match_patch.Diff;
 import org.geogit.api.porcelain.CommitOp;
 import org.geogit.api.porcelain.DiffOp;
->>>>>>> noctella/master
 import org.geogit.api.porcelain.FeatureNodeRefFromRefspec;
 import org.geogit.test.integration.RepositoryTestCase;
 import org.junit.Test;
@@ -35,14 +30,6 @@ public class DiffBoundsTest extends RepositoryTestCase {
 
     @Test
     public void testDiffBetweenDifferentTrees() {
-<<<<<<< HEAD
-        NodeRef oldRef = geogit.command(FeatureNodeRefFromRefspec.class)
-                .setRefspec("HEAD:" + NodeRef.appendChild(polyName, idPG1)).call().orNull();
-        NodeRef newRef = geogit.command(FeatureNodeRefFromRefspec.class)
-                .setRefspec(NodeRef.appendChild(polyName, idPG2)).call().orNull();
-        
-
-=======
 
        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD^").setNewVersion("HEAD").call();
        
@@ -60,7 +47,7 @@ public class DiffBoundsTest extends RepositoryTestCase {
         					.computeDiffBounds();
        				
         System.out.println(diffBoundsEnvelope);
->>>>>>> noctella/master
+
     }
 
     @Test

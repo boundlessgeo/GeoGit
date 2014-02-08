@@ -63,7 +63,7 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
             envelopeList.add(oldEnvelope);
         }
 
-        if (envelopeList.size() >= 1) {
+        if (envelopeList.size() > 1) {
             Envelope firstEnvelope = envelopeList.get(0);
             ListIterator<Envelope> envIterator = envelopeList.listIterator(0);
 
@@ -77,7 +77,7 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
             }
 
             if (same)
-                return firstEnvelope;
+                return new Envelope(null, null);
             else {
                 ListIterator<Envelope> newEnvIterator = envelopeList.listIterator(1);
                 Envelope currEnvelope;
@@ -104,8 +104,10 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
             }
         }
 
+        else if (envelopeList.size() == 1)
+            return envelopeList.get(0);
         else
-            return new Envelope();
+            return new Envelope(null, null);
 
     }
 }
