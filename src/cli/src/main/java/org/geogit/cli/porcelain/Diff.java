@@ -100,18 +100,20 @@ public class Diff extends AbstractCommand implements CLICommand {
         } else {
             printer = new FullDiffPrinter(nogeom, false);
         }
-        
-        if(bounds){
-        	List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-        	while(entries.hasNext()){
-        		DiffEntry entry = entries.next();
-        		entriesList.add(entry);
-        	}
+
+        if (bounds) {
+            List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
+            while (entries.hasNext()) {
+                DiffEntry entry = entries.next();
+                entriesList.add(entry);
+            }
+
             DiffBounds diffBounds = new DiffBounds(entriesList);
-        	Envelope bounds = diffBounds.getDiffBounds();
-            boundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
-        	boundsDiffPrinter.print(geogit, cli.getConsole(), envelope);
-        	return;
+            Envelope boundsEnvelope = diffBounds.computeDiffBounds();
+            BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
+            boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
+
+            return;
         }
 
         DiffEntry entry;
