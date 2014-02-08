@@ -28,25 +28,25 @@ public class DiffBoundsTest extends RepositoryTestCase {
 
 
         geogit.command(CommitOp.class).call();
+        
+        points1_modified = feature(pointsType, idP1, "StringProp1_1a", new Integer(1001),
+                "POINT(10 20)");
+        insertAndAdd(points1_modified);
+        geogit.command(CommitOp.class).call();
+        
     }
 
     @Test
     public void testDiffBetweenDifferentTrees() {
 
-        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD^")
-                .setNewVersion("HEAD").call();
 
-        List<DiffEntry> entriesList = new ArrayList<DiffEntry>();
-
-        DiffEntry entry;
-
-        while (entries.hasNext()) {
-            entry = entries.next();
-            entriesList.add(entry);
-        }
-
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).setDiffEntries(entriesList)
-                .computeDiffBounds();
+       Iterable<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3").setNewVersion("HEAD").call();
+       
+      
+        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
+        					.setDiffEntries(entries)
+        					.computeDiffBounds();
+       				
 
         System.out.println(diffBoundsEnvelope);
 

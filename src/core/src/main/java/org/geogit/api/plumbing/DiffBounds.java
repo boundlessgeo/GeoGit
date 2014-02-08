@@ -5,10 +5,6 @@
 
 package org.geogit.api.plumbing;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffObjectCount;
@@ -22,21 +18,21 @@ import com.vividsolutions.jts.geom.Envelope;
 
 public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
 
-    private List<DiffEntry> entries;
+    private Iterable<DiffEntry> entries;
 
     @Override
     public DiffObjectCount call() {
         // TODO Auto-generated method stub
         return null;
     }
-    
-    public DiffBounds(){
-    	
+
+    public DiffBounds() {
+
     }
 
     // constructor to initialize the entries
-    public DiffBounds(List<DiffEntry> entries) {
-        entries = new ArrayList<DiffEntry>(entries);
+    public DiffBounds(Iterable<DiffEntry> entries) {
+        this.entries = entries;
     }
 
     /**
@@ -44,8 +40,8 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
      * @param entries - the list of diff- entries
      * @return {@code this}
      */
-    public DiffBounds setDiffEntries(List<DiffEntry> entries) {
-        this.entries = new ArrayList<DiffEntry>(entries);
+    public DiffBounds setDiffEntries(Iterable<DiffEntry> entries) {
+        this.entries = entries;
         return this;
     }
 
@@ -56,77 +52,30 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
      */
     public Envelope computeDiffBounds() {
 
-        List<Envelope> envelopeList = new ArrayList<Envelope>();
+        Envelope boundsEnvelope = new Envelope();
+        boundsEnvelope.setToNull();
+
+        Envelope oldEnvelope = new Envelope();
+        Envelope newEnvelope = new Envelope();
 
         // create a list of envelopes using the entries list
         for (DiffEntry entry : entries) {
-            Envelope oldEnvelope = new Envelope();
-            Envelope newEnvelope = new Envelope();
-            entry.getOldObject().expand(oldEnvelope);
-            entry.getNewObject().expand(newEnvelope);
-            
-            if(!oldEnvelope.equals(newEnvelope)){
-                Envelope envelope = new Envelope(Math.min(oldEnvelope.getMinX(),
-                        newEnvelope.getMinX()), Math.max(oldEnvelope.getMaxX(),
-                        newEnvelope.getMaxX()), Math.min(oldEnvelope.getMinY(),
-                        newEnvelope.getMinY()), Math.max(oldEnvelope.getMaxY(),
-                        newEnvelope.getMaxY()));
-                envelopeList.add(envelope);
+
+            if (entry.getOldObject() != null) {
+                entry.getOldObject().expand(oldEnvelope);
+            }
+
+            if (entry.getNewObject() != null) {
+                entry.getNewObject().expand(newEnvelope);
+            }
+
+            if (!oldEnvelope.equals(newEnvelope)) {
+                entry.getOldObject().expand(boundsEnvelope);
+                entry.getNewObject().expand(boundsEnvelope);
             }
         }
 
-        if (envelopeList.size() > 1) {
-            Envelope firstEnvelope = envelopeList.get(0);
-            ListIterator<Envelope> envIterator = envelopeList.listIterator(0);
-
-            // Check if all are overlapping?
-            boolean same = true;
-            while (same && envIterator.hasNext()) {
-                if (firstEnvelope.equals(envIterator.next()))
-                    same = true;
-                else
-                    same = false;
-            }
-
-            if (same){
-            	Envelope envelope = new Envelope();
-        	envelope.setToNull();
-        	return envelope;
-            }
-            else {
-                ListIterator<Envelope> newEnvIterator = envelopeList.listIterator(1);
-                Envelope currEnvelope;
-                double maxX = firstEnvelope.getMaxX();
-                double maxY = firstEnvelope.getMaxY();
-                double minX = firstEnvelope.getMinX();
-                double minY = firstEnvelope.getMinY();
-
-                while (newEnvIterator.hasNext()) {
-
-                    currEnvelope = newEnvIterator.next();
-
-                    if (currEnvelope.getMaxX() > maxX)
-                        maxX = currEnvelope.getMaxX();
-                    if (currEnvelope.getMaxY() > maxY)
-                        maxY = currEnvelope.getMaxY();
-                    if (currEnvelope.getMinX() < minX)
-                        minX = currEnvelope.getMinX();
-                    if (currEnvelope.getMinY() < minY)
-                        minY = currEnvelope.getMinY();
-
-                }
-                return new Envelope(maxX, minX, maxY, minY);
-            }
-        }
-
-        else if (envelopeList.size() == 1){
-            return envelopeList.get(0);
-        }
-        else {
-        	Envelope envelope = new Envelope();
-        	envelope.setToNull();
-            return envelope;
-        }
+        return boundsEnvelope;
 
     }
 }
