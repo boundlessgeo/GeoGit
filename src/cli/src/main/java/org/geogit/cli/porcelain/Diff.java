@@ -108,10 +108,10 @@ public class Diff extends AbstractCommand implements CLICommand {
         		DiffEntry entry = entries.next();
         		entriesList.add(entry);
         	}
-        	DiffBounds diffBounds = new DiffBounds(entries);
-        	Envelope bounds = diffBounds.getDiffBounds();
+        	DiffBounds diffBounds = new DiffBounds(entriesList);
+        	Envelope boundsEnvelope = diffBounds.getDiffBounds();
         	BoundsDiffPrinter boundsDiffPrinter = new BoundsDiffPrinter();
-        	boundsDiffPrinter.print(geogit, cli.getConsole(), envelope);
+        	boundsDiffPrinter.print(geogit, cli.getConsole(), boundsEnvelope);
         	return;
         }
 
