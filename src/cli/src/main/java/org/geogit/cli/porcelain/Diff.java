@@ -79,7 +79,6 @@ public class Diff extends AbstractCommand implements CLICommand {
         
 
         Iterator<DiffEntry> entries;
-        
         if (bounds) {
             DiffBounds diffBounds = new DiffBounds();
             Envelope boundsEnvelope = diffBounds.computeDiffBounds(diff.call());
