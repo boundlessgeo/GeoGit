@@ -14,9 +14,14 @@ public class BoundsDiffPrinter {
 	 public void print(GeoGIT geogit, ConsoleReader console, Envelope envelope) throws IOException {
 
         Ansi ansi = AnsiDecorator.newAnsi(console.getTerminal().isAnsiSupported());
-        ansi.a(envelope.getMinX() + ","+  envelope.getMaxX() + "," + envelope.getMinY() + envelope.getMaxY());
-  
-	        console.println(ansi.toString());
+        
+        if(envelope.isNull()){
+        	ansi.a("No differences found.");	
+        }else{
+        	 ansi.a(envelope.getMinX() + ", "+  envelope.getMaxX() + ", " + envelope.getMinY() + ", " + envelope.getMaxY());
+        }
+       
+	    console.println(ansi.toString());
 	 }
 
 
