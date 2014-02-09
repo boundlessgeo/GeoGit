@@ -63,49 +63,57 @@ public class Status extends AbstractCommand implements CLICommand {
         ConsoleReader console = cli.getConsole();
         GeoGIT geogit = cli.getGeogit();
 
-//        final long countStaged = index.countStaged(null).getCount();
-//        final int countConflicted = index.countConflicted(null);
-//        final long countUnstaged = workTree.countUnstaged(null).getCount();
-        
         StatusOp op = geogit.command(StatusOp.class);
         StatusSummary summary = op.call();
-        
-        
+
         final Optional<Ref> currHead = geogit.command(RefParse.class).setName(Ref.HEAD).call();
         checkParameter(currHead.isPresent(), "Repository has no HEAD.");
-        
+
         if (currHead.get() instanceof SymRef) {
             final SymRef headRef = (SymRef) currHead.get();
             console.println("# On branch " + Ref.localName(headRef.getTarget()));
         } else {
             console.println("# Not currently on any branch.");
         }
-        
+
         print(console, summary);
-       
+
     }
-    
-    private void print(ConsoleReader console,StatusSummary summary) throws IOException{
-    	long countStaged = summary.getCountStaged();
-    	long countUnstaged = summary.getCountUnstaged();
-    	int countConflicted = summary.getCountConflicts();
-    	
-      if (summary.getCountStaged() + countUnstaged + countConflicted == 0) {
-    	  print(console,summary.getStaged(),Color.GREEN, countStaged + countUnstaged + countConflicted);
-	  }
-	
-	  if (countStaged > 0) {
-		  print(console,summary.getStaged(),Color.GREEN, countStaged + countUnstaged + countConflicted);
-	  }
-	
-	  if (countConflicted > 0) {
-		  printUnmerged(console,summary.getConflicts(),Color.RED, (int) (countStaged + countUnstaged + countConflicted));
-	  }
-	
-	  if (countUnstaged > 0) {
-		  print(console,summary.getUnstaged(),Color.RED, countStaged + countUnstaged + countConflicted);
-	  }
-    	
+
+    private void print(ConsoleReader console, StatusSummary summary) throws IOException {
+        long countStaged = summary.getCountStaged();
+        long countUnstaged = summary.getCountUnstaged();
+        int countConflicted = summary.getCountConflicts();
+
+        if (summary.getCountStaged() + countUnstaged + countConflicted == 0) {
+            console.println("nothing to commit (working directory clean)");
+            print(console, summary.getStaged(), Color.GREEN, countStaged + countUnstaged
+                    + countConflicted);
+        }
+
+        if (countStaged > 0) {
+            console.println("# Changes to be committed:");
+            console.println("#   (use \"geogit reset HEAD <path/to/fid>...\" to unstage)");
+            console.println("#");
+            print(console, summary.getStaged(), Color.GREEN, countStaged);
+            console.println("#");
+        }
+
+        if (countConflicted > 0) {
+            console.println("# Unmerged paths:");
+            console.println("#   (use \"geogit add/rm <path/to/fid>...\" as appropriate to mark resolution");
+            console.println("#");
+            printUnmerged(console, summary.getConflicts(), Color.RED, countConflicted);
+        }
+
+        if (countUnstaged > 0) {
+            console.println("# Changes not staged for commit:");
+            console.println("#   (use \"geogit add <path/to/fid>...\" to update what will be committed");
+            console.println("#   (use \"geogit checkout -- <path/to/fid>...\" to discard changes in working directory");
+            console.println("#");
+            print(console, summary.getUnstaged(), Color.RED, countUnstaged);
+        }
+
     }
 
     /**
