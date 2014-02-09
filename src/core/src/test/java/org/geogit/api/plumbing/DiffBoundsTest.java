@@ -23,12 +23,16 @@ public class DiffBoundsTest extends RepositoryTestCase {
     protected void setUpInternal() throws Exception {
         populate(true, points1, points3);
         insertAndAdd(points1_modified);
-
         geogit.command(CommitOp.class).call();
 
         points1_modified = feature(pointsType, idP1, "StringProp1_1a", new Integer(1001),
                 "POINT(10 20)");
         insertAndAdd(points1_modified);
+        geogit.command(CommitOp.class).call();
+
+        points1B_modified = feature(pointsType, idP1, "StringProp1B_1a", new Integer(2000),
+                "POINT(10 220)");
+        insertAndAdd(points1B_modified);
         geogit.command(CommitOp.class).call();
 
     }
@@ -42,7 +46,6 @@ public class DiffBoundsTest extends RepositoryTestCase {
         Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).computeDiffBounds(entries);
 
         System.out.println(diffBoundsEnvelope);
-
     }
 
     @Test

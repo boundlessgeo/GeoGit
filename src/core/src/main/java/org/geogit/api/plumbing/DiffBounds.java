@@ -56,8 +56,8 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
             }
 
             if (!oldEnvelope.equals(newEnvelope)) {
-                entry.getOldObject().expand(boundsEnvelope);
-                entry.getNewObject().expand(boundsEnvelope);
+            	if (entry.getOldObject() != null) entry.getOldObject().expand(boundsEnvelope);
+            	if (entry.getNewObject() != null) entry.getNewObject().expand(boundsEnvelope);
             }
         }
 
