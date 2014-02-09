@@ -40,12 +40,18 @@ public class DiffBoundsTest extends RepositoryTestCase {
     @Test
     public void testDiffBetweenDifferentTrees() {
 
-        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3")
-                .setNewVersion("HEAD").call();
 
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).computeDiffBounds(entries);
+       Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3").setNewVersion("HEAD").call();
+       
+        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
+        					.computeDiffBounds(entries);
+        
+        assertEquals(diffBoundsEnvelope.getMinX(), 1.0, 0.0);
+        assertEquals(diffBoundsEnvelope.getMinY(), 1.0, 0.0);
+        assertEquals(diffBoundsEnvelope.getMaxX(), 10.0, 0.0);
+        assertEquals(diffBoundsEnvelope.getMaxY(), 20.0, 0.0);
+       				
 
-        System.out.println(diffBoundsEnvelope);
     }
 
     @Test
@@ -59,35 +65,4 @@ public class DiffBoundsTest extends RepositoryTestCase {
         assertTrue(diffBoundsEnvelope.isNull());
 
     }
-
-    @Test
-    public void testDiffUnexistentFeature() {
-        try {
-            NodeRef oldRef = geogit.command(FeatureNodeRefFromRefspec.class)
-                    .setRefspec(NodeRef.appendChild(pointsName, "Points.100")).call().orNull();
-            NodeRef newRef = geogit.command(FeatureNodeRefFromRefspec.class)
-                    .setRefspec(NodeRef.appendChild(pointsName, idP1)).call().orNull();
-            geogit.command(DiffFeature.class).setOldVersion(Suppliers.ofInstance(oldRef))
-                    .setNewVersion(Suppliers.ofInstance(newRef)).call();
-            fail();
-        } catch (IllegalArgumentException e) {
-            assertTrue(true);
-        }
-    }
-
-    @Test
-    public void testDiffWrongPath() {
-        try {
-            NodeRef oldRef = geogit.command(FeatureNodeRefFromRefspec.class).setRefspec(pointsName)
-                    .call().orNull();
-            NodeRef newRef = geogit.command(FeatureNodeRefFromRefspec.class)
-                    .setRefspec(NodeRef.appendChild(pointsName, idP1)).call().orNull();
-            geogit.command(DiffFeature.class).setOldVersion(Suppliers.ofInstance(oldRef))
-                    .setNewVersion(Suppliers.ofInstance(newRef)).call();
-            fail();
-        } catch (IllegalArgumentException e) {
-            assertTrue(true);
-        }
-    }
-
 }
