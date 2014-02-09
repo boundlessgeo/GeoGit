@@ -4,9 +4,7 @@
  */
 package org.geogit.api.plumbing;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 import org.geogit.api.NodeRef;
 import org.geogit.api.plumbing.diff.DiffEntry;

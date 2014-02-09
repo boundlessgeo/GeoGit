@@ -5,6 +5,8 @@
 
 package org.geogit.api.plumbing;
 
+import java.util.Iterator;
+
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffObjectCount;
@@ -18,31 +20,14 @@ import com.vividsolutions.jts.geom.Envelope;
 
 public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
 
-    private Iterable<DiffEntry> entries;
-
     @Override
     public DiffObjectCount call() {
         // TODO Auto-generated method stub
         return null;
     }
-    
-    public DiffBounds(){
-    	
-    }
 
-    // constructor to initialize the entries
-    public DiffBounds(Iterable<DiffEntry> entries) {
-        this.entries = entries;
-    }
+    public DiffBounds() {
 
-    /**
-     * 
-     * @param entries - the list of diff- entries
-     * @return {@code this}
-     */
-    public DiffBounds setDiffEntries(Iterable<DiffEntry> entries) {
-        this.entries = entries;
-        return this;
     }
 
     /**
@@ -50,35 +35,32 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
      * @param entries - A list containing the DiffEntries
      * @return Envelope - representing the final bounds
      */
-    public Envelope computeDiffBounds() {
+    public Envelope computeDiffBounds(Iterator<DiffEntry> entries) {
 
-        
         Envelope boundsEnvelope = new Envelope();
         boundsEnvelope.setToNull();
-        
+
         Envelope oldEnvelope = new Envelope();
         Envelope newEnvelope = new Envelope();
 
         // create a list of envelopes using the entries list
-        for (DiffEntry entry : entries) {
-        	
-        	 oldEnvelope.setToNull();
-             newEnvelope.setToNull();
-            
-            if(entry.getOldObject() != null){
-            	entry.getOldObject().expand(oldEnvelope);
+        while (entries.hasNext()) {
+            DiffEntry entry = entries.next();
+
+            if (entry.getOldObject() != null) {
+                entry.getOldObject().expand(oldEnvelope);
             }
-            
-            if(entry.getNewObject() != null){
-            	entry.getNewObject().expand(newEnvelope);
+
+            if (entry.getNewObject() != null) {
+                entry.getNewObject().expand(newEnvelope);
             }
-            
-            if(!oldEnvelope.equals(newEnvelope)){
-            	entry.getOldObject().expand(boundsEnvelope);
-                entry.getNewObject().expand(boundsEnvelope);
+
+            if (!oldEnvelope.equals(newEnvelope)) {
+            	if (entry.getOldObject() != null) entry.getOldObject().expand(boundsEnvelope);
+            	if (entry.getNewObject() != null) entry.getNewObject().expand(boundsEnvelope);
             }
         }
-        
+
         return boundsEnvelope;
 
     }
