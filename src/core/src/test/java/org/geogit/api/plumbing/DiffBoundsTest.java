@@ -19,50 +19,50 @@ import com.vividsolutions.jts.geom.Envelope;
 
 public class DiffBoundsTest extends RepositoryTestCase {
 
-    @Override
-    protected void setUpInternal() throws Exception {
-        populate(true, points1, points3);
-        insertAndAdd(points1_modified);
-        geogit.command(CommitOp.class).call();
+	@Override
+	protected void setUpInternal() throws Exception {
+		populate(true, points1, points3);
+		insertAndAdd(points1_modified);
+		geogit.command(CommitOp.class).call();
 
-        points1_modified = feature(pointsType, idP1, "StringProp1_1a", new Integer(1001),
-                "POINT(10 20)");
-        insertAndAdd(points1_modified);
-        geogit.command(CommitOp.class).call();
+		points1_modified = feature(pointsType, idP1, "StringProp1_1a",
+				new Integer(1001), "POINT(10 20)");
+		insertAndAdd(points1_modified);
+		geogit.command(CommitOp.class).call();
 
-        points1B_modified = feature(pointsType, idP1, "StringProp1B_1a", new Integer(2000),
-                "POINT(10 220)");
-        insertAndAdd(points1B_modified);
-        geogit.command(CommitOp.class).call();
+		points1B_modified = feature(pointsType, idP1, "StringProp1B_1a",
+				new Integer(2000), "POINT(10 220)");
+		insertAndAdd(points1B_modified);
+		geogit.command(CommitOp.class).call();
 
-    }
+	}
 
-    @Test
-    public void testDiffBetweenDifferentTrees() {
+	@Test
+	public void testDiffBetweenDifferentTrees() {
 
+		Iterator<DiffEntry> entries = geogit.command(DiffOp.class)
+				.setOldVersion("HEAD~3").setNewVersion("HEAD").call();
 
-       Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD~3").setNewVersion("HEAD").call();
-       
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
-        					.computeDiffBounds(entries);
-        
-        assertEquals(diffBoundsEnvelope.getMinX(), 1.0, 0.0);
-        assertEquals(diffBoundsEnvelope.getMinY(), 1.0, 0.0);
-        assertEquals(diffBoundsEnvelope.getMaxX(), 10.0, 0.0);
-        assertEquals(diffBoundsEnvelope.getMaxY(), 20.0, 0.0);
-       				
+		Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
+				.computeDiffBounds(entries);
 
-    }
+		assertEquals(diffBoundsEnvelope.getMinX(), 1.0, 0.0);
+		assertEquals(diffBoundsEnvelope.getMinY(), 1.0, 0.0);
+		assertEquals(diffBoundsEnvelope.getMaxX(), 10.0, 0.0);
+		assertEquals(diffBoundsEnvelope.getMaxY(), 20.0, 0.0);
 
-    @Test
-    public void testDiffBetweenIdenticalTrees() {
+	}
 
-        Iterator<DiffEntry> entries = geogit.command(DiffOp.class).setOldVersion("HEAD")
-                .setNewVersion("HEAD").call();
+	@Test
+	public void testDiffBetweenIdenticalTrees() {
 
-        Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class).computeDiffBounds(entries);
+		Iterator<DiffEntry> entries = geogit.command(DiffOp.class)
+				.setOldVersion("HEAD").setNewVersion("HEAD").call();
 
-        assertTrue(diffBoundsEnvelope.isNull());
+		Envelope diffBoundsEnvelope = geogit.command(DiffBounds.class)
+				.computeDiffBounds(entries);
 
-    }
+		assertTrue(diffBoundsEnvelope.isNull());
+
+	}
 }
