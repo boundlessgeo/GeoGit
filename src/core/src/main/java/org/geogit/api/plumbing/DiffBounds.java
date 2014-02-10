@@ -32,7 +32,7 @@ public class DiffBounds extends AbstractGeoGitOp<DiffObjectCount> {
 
     /**
      * 
-     * @param entries - A list containing the DiffEntries
+     * @param entries - A list containing each of the DiffEntries
      * @return Envelope - representing the final bounds
      */
     public Envelope computeDiffBounds(Iterator<DiffEntry> entries) {
