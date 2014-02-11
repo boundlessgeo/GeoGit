@@ -49,7 +49,7 @@ public class DiffBoundsTest extends RepositoryTestCase {
 		assertEquals(diffBoundsEnvelope.getMinX(), 1.0, 0.0);
 		assertEquals(diffBoundsEnvelope.getMinY(), 1.0, 0.0);
 		assertEquals(diffBoundsEnvelope.getMaxX(), 10.0, 0.0);
-		assertEquals(diffBoundsEnvelope.getMaxY(), 20.0, 0.0);
+		assertEquals(diffBoundsEnvelope.getMaxY(), 220.0, 0.0);
 
 	}
 
