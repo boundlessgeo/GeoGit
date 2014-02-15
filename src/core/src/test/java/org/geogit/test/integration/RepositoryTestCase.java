@@ -160,7 +160,6 @@ public abstract class RepositoryTestCase extends Assert {
 
         geogit = new GeoGIT(injector, envHome);
         repo = geogit.getOrCreateRepository();
-        repo = geogit.getOrCreateRepository();
         repo.command(ConfigOp.class).setAction(ConfigAction.CONFIG_SET).setName("user.name")
                 .setValue("Gabriel Roldan").call();
         repo.command(ConfigOp.class).setAction(ConfigAction.CONFIG_SET).setName("user.email")
@@ -203,9 +202,14 @@ public abstract class RepositoryTestCase extends Assert {
     }
 
     protected Injector createInjector() {
-        Platform testPlatform = new TestPlatform(envHome);
+        Platform testPlatform = createPlatform();
         GlobalInjectorBuilder.builder = new TestInjectorBuilder(testPlatform);
         return GlobalInjectorBuilder.builder.build();
+    }
+
+    protected Platform createPlatform() {
+        Platform testPlatform = new TestPlatform(envHome);
+        return testPlatform;
     }
 
     @After
