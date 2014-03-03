@@ -177,8 +177,8 @@ class GeogitFeatureReader<T extends FeatureType, F extends Feature> implements F
                 }
             };
 
-            this.stats = new Stats(queryBounds);
-            refBoundsFilter = and(stats, refBoundsFilter);
+            //this.stats = new Stats(queryBounds);
+            //refBoundsFilter = and(stats, refBoundsFilter);
         }
 
         Iterator<NodeRef> featureRefs;
