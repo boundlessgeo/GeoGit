@@ -4,6 +4,7 @@
  */
 package org.geogit.storage.blueprints;
 
+import static com.google.common.base.Preconditions.checkState;
 import static com.tinkerpop.blueprints.Direction.BOTH;
 import static com.tinkerpop.blueprints.Direction.IN;
 import static com.tinkerpop.blueprints.Direction.OUT;
@@ -17,7 +18,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,9 +31,9 @@ import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
-import com.tinkerpop.blueprints.CloseableIterable;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.IndexableGraph;
 import com.tinkerpop.blueprints.KeyIndexableGraph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.gremlin.java.GremlinPipeline;
@@ -46,7 +46,8 @@ import com.tinkerpop.pipes.branch.LoopPipe.LoopBundle;
  * 
  * @param <DB>
  */
-public abstract class BlueprintsGraphDatabase<DB extends KeyIndexableGraph> implements GraphDatabase {
+public abstract class BlueprintsGraphDatabase<DB extends KeyIndexableGraph> implements
+        GraphDatabase {
 
     protected DB graphDB = null;
 
@@ -92,49 +93,28 @@ public abstract class BlueprintsGraphDatabase<DB extends KeyIndexableGraph> impl
         }
     }
 
-    static {
-        // Registers a shutdown hook for the Neo4j instance so that it
-        // shuts down nicely when the VM exits (even if you "Ctrl-C" the
-        // running example before it's completed)
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                for (Entry<String, ServiceContainer<?>> entry : databaseServices.entrySet()) {
-                    File graphPath = new File(entry.getKey());
-                    if (graphPath.exists()) {
-                        entry.getValue().getService().shutdown();
-                    }
-                }
-                databaseServices.clear();
-            }
-        });
-    }
-
     public BlueprintsGraphDatabase(Platform platform) {
         this.platform = platform;
     }
 
-    /**
-     * Opens the Neo4J graph database.
-     */
     @Override
     public void open() {
         if (isOpen()) {
             return;
         }
 
-        URL envHome = new ResolveGeogitDir(platform).call();
-        if (envHome == null) {
-            throw new IllegalStateException("Not inside a geogit directory");
-        }
-        if (!"file".equals(envHome.getProtocol())) {
+        Optional<URL> envHome = new ResolveGeogitDir(platform).call();
+        checkState(envHome.isPresent(), "Not inside a geogit directory");
+
+        final URL envUrl = envHome.get();
+        if (!"file".equals(envUrl.getProtocol())) {
             throw new UnsupportedOperationException(
                     "This Graph Database works only against file system repositories. "
-                            + "Repository location: " + envHome.toExternalForm());
+                            + "Repository location: " + envUrl.toExternalForm());
         }
         File repoDir;
         try {
-            repoDir = new File(envHome.toURI());
+            repoDir = new File(envUrl.toURI());
         } catch (URISyntaxException e) {
             throw Throwables.propagate(e);
         }
@@ -210,7 +190,7 @@ public abstract class BlueprintsGraphDatabase<DB extends KeyIndexableGraph> impl
      * Closes the database.
      */
     @Override
-    public void close() {
+    public synchronized void close() {
         if (isOpen()) {
             @SuppressWarnings("unchecked")
             ServiceContainer<DB> container = (ServiceContainer<DB>) databaseServices.get(dbPath);
@@ -725,5 +705,10 @@ public abstract class BlueprintsGraphDatabase<DB extends KeyIndexableGraph> impl
      */
     protected void rollback() {
         // Stub for transactional graphdb to use
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s[path: %s]", getClass().getSimpleName(), dbPath);
     }
 }

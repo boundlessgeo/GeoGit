@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.geogit.api.Platform;
 import org.geogit.api.plumbing.ResolveGeogitDir;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
 import com.google.common.io.InputSupplier;
@@ -36,6 +37,8 @@ public class EnvironmentBuilder implements Provider<Environment> {
     private boolean stagingDatabase;
 
     private EnvironmentConfig forceConfig;
+
+    private boolean readOnly;
 
     @Inject
     public EnvironmentBuilder(Platform platform) {
@@ -61,8 +64,8 @@ public class EnvironmentBuilder implements Provider<Environment> {
     @Override
     public synchronized Environment get() {
 
-        final URL repoUrl = new ResolveGeogitDir(platform).call();
-        if (repoUrl == null && absolutePath == null) {
+        final Optional<URL> repoUrl = new ResolveGeogitDir(platform).call();
+        if (!repoUrl.isPresent() && absolutePath == null) {
             throw new IllegalStateException("Can't find geogit repository home");
         }
         final File storeDirectory;
@@ -72,7 +75,7 @@ public class EnvironmentBuilder implements Provider<Environment> {
         } else {
             File currDir;
             try {
-                currDir = new File(repoUrl.toURI());
+                currDir = new File(repoUrl.get().toURI());
             } catch (URISyntaxException e) {
                 throw Throwables.propagate(e);
             }
@@ -107,7 +110,8 @@ public class EnvironmentBuilder implements Provider<Environment> {
             envCfg.setAllowCreate(true);
             envCfg.setCacheMode(CacheMode.MAKE_COLD);
             envCfg.setLockTimeout(5, TimeUnit.SECONDS);
-            envCfg.setDurability(Durability.COMMIT_NO_SYNC);
+            envCfg.setDurability(Durability.COMMIT_SYNC);
+            //envCfg.setReadOnly(readOnly);
         } else {
             envCfg = this.forceConfig;
         }
@@ -135,7 +139,21 @@ public class EnvironmentBuilder implements Provider<Environment> {
         //
         // // envCfg.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
 
-        Environment env = new Environment(storeDirectory, envCfg);
+        Environment env;
+        try {
+            env = new Environment(storeDirectory, envCfg);
+        } catch (RuntimeException lockedEx) {
+            // lockedEx.printStackTrace();
+            if (readOnly) {
+                // this happens when trying to open the env in read only mode when its already open
+                // in read/write mode inside the same process. So we re-open it read-write but the
+                // database itself will be open read-only by JEObjectDatabase.
+                envCfg.setReadOnly(true);
+                env = new Environment(storeDirectory, envCfg);
+            } else {
+                throw lockedEx;
+            }
+        }
         return env;
     }
 
@@ -145,6 +163,11 @@ public class EnvironmentBuilder implements Provider<Environment> {
 
     public void setConfig(EnvironmentConfig envCfg) {
         this.forceConfig = envCfg;
+    }
+
+    public EnvironmentBuilder setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+        return this;
     }
 
 }

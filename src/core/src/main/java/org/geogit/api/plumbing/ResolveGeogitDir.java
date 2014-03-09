@@ -8,9 +8,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
+import javax.annotation.Nullable;
+
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.Platform;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.inject.Inject;
@@ -23,7 +26,7 @@ import com.google.inject.Inject;
  * {@code .geogit} directory is found.
  * 
  */
-public class ResolveGeogitDir extends AbstractGeoGitOp<URL> {
+public class ResolveGeogitDir extends AbstractGeoGitOp<Optional<URL>> {
 
     private Platform platform;
 
@@ -37,21 +40,24 @@ public class ResolveGeogitDir extends AbstractGeoGitOp<URL> {
         this.platform = platform;
     }
 
+    public static Optional<URL> lookup(final File directory) {
+        try {
+            return Optional.fromNullable(lookupGeogitDirectory(directory));
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+
     /**
      * @return the location of the {@code .geogit} repository environment directory or {@code null}
      *         if not inside a working directory
      * @see org.geogit.api.AbstractGeoGitOp#call()
      */
     @Override
-    public URL call() {
+    public Optional<URL> call() {
         File pwd = platform.pwd();
-        URL lookup;
-        try {
-            lookup = lookupGeogitDirectory(pwd);
-        } catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-        return lookup;
+        Optional<URL> repoLocation = ResolveGeogitDir.lookup(pwd);
+        return repoLocation;
     }
 
     /**
@@ -59,7 +65,7 @@ public class ResolveGeogitDir extends AbstractGeoGitOp<URL> {
      * @return the location of the {@code .geogit} repository environment directory or {@code null}
      *         if not inside a working directory
      */
-    private URL lookupGeogitDirectory(File file) throws IOException {
+    private static URL lookupGeogitDirectory(@Nullable File file) throws IOException {
         if (file == null) {
             return null;
         }
