@@ -23,9 +23,9 @@ In the case	of importing data, the following syntax is used
 
 	$ geogit <shp|geojson|pg|sl|sqlserver|oracle> import <source>[-d <destination_path>] [--no-overwrite] <specific_parameters>
 
-Data can be imported in a given path defined using the ``-d`` option. If it is not used, the destination path will be defined automatically based on the data source. For instance, in the case of using a shapefile, the destination path is defined using the name of the shapefile.
+Data can be imported from a given path defined using the ``-d`` option. If it is not used, the destination path will be defined automatically based on the data source. For instance, in the case of using a shapefile, the destination path is defined using the name of the shapefile.
 
-The ``source`` argument is the filepath of the file to import, in case of using shapefiles, or the name of the table to import in case of importing from a PostGIS database.
+The ``source`` argument is the filepath of the file to import, in case of using shapefiles, or the name of the table to import in case of importing from a database.
 
 The following command line will import all the features in a shapefile named ``parks.shp`` into the ``parks`` tree in the working tree of the GeoGit repository.
 
@@ -52,7 +52,7 @@ When importing from a database, additional parameters can be supplied to configu
 * ``--user``: User name.  Default: postgres
 * ``--password``: Password.  Default: <no password>
 
-I using a SpatiaLite database only the following parameters are used.
+If using a SpatiaLite database only the following parameters are used.
 
 * ``--database``: The database to connect to.  Default: database.sqlite
 * ``--user``: User name.  Default: user
@@ -72,7 +72,7 @@ GeoGit also supports SQLServer data. In that case the following parameters have 
 * ``--user``: User name.  Default: sqlserver
 * ``--password``: Password.  Default: <no password>
 
-This connection parameters are also used when exporting to a database. We will see the exporting functionality later in this same manual.
+These connection parameters are also used when exporting to a database. We will see the exporting functionality later in this same manual.
 
 When importing from a database, all tables can be imported with one single command. To do so, do not enter the name of a table as data source, but use the ``--all`` option instead, as in the following example:
 
@@ -92,7 +92,7 @@ A listing of all available tables for a given database connection can be obtaine
 
 Since our repository had just been initialized, it was completely empty, and there is no way that the data we have imported can conflict with data that already existed in the repository. However, importing new data (or a different version of that same data) later can cause conflicts and it might require a different approach than just using the plain import command as we have done now. We will deal with these cases later, but for now it is enough to know that our repository contains some spatial data in its working tree.
 
-Once the data is imported in the working tree, GeoGit can use it. The original file or database from which you imported it is still something that GeoGit cannot manage, so it is of no use for GeoGit. There is no link between your repository and the original file or data base, so you can literally remove it from your system and it would have no effect at all on GeoGit, which will work exclusively with the copy of the data that is now in the repository working tree.
+Once the data is imported in the working tree, GeoGit can use it. The original file or database from which you imported it is still something that GeoGit cannot manage, so it is of no use for GeoGit. There is no link between your repository and the original file or data base, so you can completely remove it from your system and it would have no effect at all on GeoGit, which will work exclusively with the copy of the data that is now in the repository working tree.
 
 To see that the data is actually in the working tree, you can use the ``status`` command. This command gives you information about the data that you have in the working tree and the index, comparing between them and also with the repository database. This way, you can see which data has been modified but not added to the repository, or which data has been added but has not yet been versioned.
 
