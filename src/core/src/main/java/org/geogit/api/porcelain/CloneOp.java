@@ -9,7 +9,7 @@ import java.io.IOException;
 import javax.annotation.Nullable;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.GlobalInjectorBuilder;
+import org.geogit.api.GlobalContextBuilder;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.api.SymRef;
@@ -46,19 +46,6 @@ public class CloneOp extends AbstractGeoGitOp<Void> {
     private String password = null;
 
     private Optional<Integer> depth = Optional.absent();
-
-    private final Repository repository;
-
-    private final DeduplicationService deduplicationService;
-
-    /**
-     * Constructs a new {@code CloneOp}.
-     */
-    @Inject
-    public CloneOp(final Repository repository, final DeduplicationService deduplicationService) {
-        this.repository = repository;
-        this.deduplicationService = deduplicationService;
-    }
 
     /**
      * @param repositoryURL the URL of the repository to clone
@@ -114,9 +101,10 @@ public class CloneOp extends AbstractGeoGitOp<Void> {
      * @see org.geogit.api.AbstractGeoGitOp#call()
      */
     @Override
-    public Void call() {
+    protected  Void _call() {
         Preconditions.checkArgument(repositoryURL != null && !repositoryURL.isEmpty(),
                 "No repository specified to clone from.");
+        Repository repository = repository();
         if (repository.isSparse()) {
             Preconditions
                     .checkArgument(branch.isPresent(), "No branch specified for sparse clone.");
@@ -133,8 +121,8 @@ public class CloneOp extends AbstractGeoGitOp<Void> {
         if (!depth.isPresent()) {
             // See if we are cloning a shallow clone. If so, a depth must be specified.
             Optional<IRemoteRepo> remoteRepo = RemoteUtils.newRemote(
-                    GlobalInjectorBuilder.builder.build(Hints.readOnly()), remote, repository,
-                    deduplicationService);
+                    GlobalContextBuilder.builder.build(Hints.readOnly()), remote, repository,
+                    repository.deduplicationService());
 
             Preconditions.checkState(remoteRepo.isPresent(), "Failed to connect to the remote.");
             IRemoteRepo remoteRepoInstance = remoteRepo.get();
@@ -209,7 +197,6 @@ public class CloneOp extends AbstractGeoGitOp<Void> {
                 } else {
                     // just leave at default; should be master since we just initialized the repo.
                 }
-
 
             }
         }

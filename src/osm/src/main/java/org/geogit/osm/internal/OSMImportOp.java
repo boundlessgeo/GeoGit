@@ -22,6 +22,7 @@ import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Platform;
 import org.geogit.api.ProgressListener;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.api.SubProgressListener;
 import org.geogit.api.porcelain.AddOp;
 import org.geogit.api.porcelain.CommitOp;
@@ -48,7 +49,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
-import com.google.inject.Inject;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -63,7 +63,7 @@ import crosby.binary.osmosis.OsmosisReader;
  * overpass api, or from a file with OSM data
  * 
  */
-
+@Hookable(name = "osmimport")
 public class OSMImportOp extends AbstractGeoGitOp<Optional<OSMReport>> {
 
     /**
@@ -87,13 +87,6 @@ public class OSMImportOp extends AbstractGeoGitOp<Optional<OSMReport>> {
     private boolean noRaw;
 
     private String message;
-
-    private Platform platform;
-
-    @Inject
-    public OSMImportOp(Platform platform) {
-        this.platform = platform;
-    }
 
     /**
      * Sets the filter to use. It uses the overpass Query Language
@@ -181,11 +174,11 @@ public class OSMImportOp extends AbstractGeoGitOp<Optional<OSMReport>> {
 
     @SuppressWarnings("deprecation")
     @Override
-    public Optional<OSMReport> call() {
+    protected  Optional<OSMReport> _call() {
 
         checkNotNull(urlOrFilepath);
 
-        ObjectId oldTreeId = getWorkTree().getTree().getId();
+        ObjectId oldTreeId = workingTree().getTree().getId();
 
         File osmDataFile = null;
         final InputStream osmDataStream;
@@ -216,7 +209,7 @@ public class OSMImportOp extends AbstractGeoGitOp<Optional<OSMReport>> {
         }
 
         if (report != null) {
-            ObjectId newTreeId = getWorkTree().getTree().getId();
+            ObjectId newTreeId = workingTree().getTree().getId();
             if (!noRaw) {
                 if (mapping != null || filter != null) {
                     progressListener.setDescription("Staging features...");
@@ -295,7 +288,7 @@ public class OSMImportOp extends AbstractGeoGitOp<Optional<OSMReport>> {
             reader = new org.geogit.osm.internal.XmlReader(dataIn, true, compression);
         }
 
-        final WorkingTree workTree = getWorkTree();
+        final WorkingTree workTree = workingTree();
         if (!add) {
             workTree.delete(OSMUtils.NODE_TYPE_NAME);
             workTree.delete(OSMUtils.WAY_TYPE_NAME);
@@ -311,7 +304,7 @@ public class OSMImportOp extends AbstractGeoGitOp<Optional<OSMReport>> {
                 timeoutUnit);
 
         ProgressListener progressListener = getProgressListener();
-        ConvertAndImportSink sink = new ConvertAndImportSink(converter, iterator, platform,
+        ConvertAndImportSink sink = new ConvertAndImportSink(converter, iterator, platform(),
                 mapping, noRaw, new SubProgressListener(progressListener, 100));
         reader.setSink(sink);
 

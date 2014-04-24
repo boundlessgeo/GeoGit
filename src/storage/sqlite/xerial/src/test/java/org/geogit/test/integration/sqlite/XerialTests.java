@@ -4,6 +4,7 @@
  */
 package org.geogit.test.integration.sqlite;
 
+import org.geogit.api.Context;
 import org.geogit.api.Platform;
 import org.geogit.api.TestPlatform;
 import org.geogit.di.GeogitModule;
@@ -12,7 +13,6 @@ import org.geogit.storage.sqlite.XerialSQLiteModule;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.util.Modules;
 
 /**
@@ -26,7 +26,7 @@ public class XerialTests {
     /**
      * Creates the injector to enable xerial sqlite storage.
      */
-    public static Injector injector(final TestPlatform platform) {
+    public static Context injector(final TestPlatform platform) {
         return Guice.createInjector(Modules.override(new GeogitModule()).with(
                 new XerialSQLiteModule(), new AbstractModule() {
                     @Override
@@ -34,6 +34,6 @@ public class XerialTests {
                         Xerial.turnSynchronizationOff();
                         bind(Platform.class).toInstance(platform);
                     }
-                }));
+                })).getInstance(Context.class);
     }
 }

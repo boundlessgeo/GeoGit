@@ -13,7 +13,6 @@ import org.geogit.api.Platform;
 import org.geogit.api.plumbing.ResolveGeogitDir;
 
 import com.google.common.base.Throwables;
-import com.google.inject.Inject;
 
 /**
  * Resolves the location of the {@code osm} mapping log folder directory relative to the
@@ -24,17 +23,8 @@ import com.google.inject.Inject;
  */
 public class ResolveOSMMappingLogFolder extends AbstractGeoGitOp<File> {
 
-    /**
-     * Constructs a new instance of {@code ResolveOSMMappingLogFolder} with the specified platform.
-     * 
-     */
-    @Inject
-    public ResolveOSMMappingLogFolder() {
-
-    }
-
     @Override
-    public File call() {
+    protected File _call() {
         final URL geogitDirUrl = command(ResolveGeogitDir.class).call().get();
         File repoDir;
         try {

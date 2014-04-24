@@ -5,6 +5,7 @@
 
 package org.geogit.api.plumbing;
 
+import org.geogit.api.Context;
 import org.geogit.api.MemoryModule;
 import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
@@ -22,7 +23,6 @@ import org.junit.Test;
 
 import com.google.common.base.Optional;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.util.Modules;
 
 /**
@@ -38,15 +38,15 @@ public class WriteBackTest extends Assert {
 
     @Before
     public void setUp() {
-        Injector injector = Guice.createInjector(Modules.override(new GeogitModule()).with(
-                new MemoryModule(null)));
+        Context injector = Guice.createInjector(Modules.override(new GeogitModule()).with(
+                new MemoryModule(null))).getInstance(Context.class);
 
-        odb = injector.getInstance(ObjectDatabase.class);
-        indexDb = injector.getInstance(StagingDatabase.class);
+        odb = injector.objectDatabase();
+        indexDb = injector.stagingDatabase();
         odb.open();
         indexDb.open();
 
-        writeBack = injector.getInstance(WriteBack.class);
+        writeBack = injector.command(WriteBack.class);
     }
 
     @Test

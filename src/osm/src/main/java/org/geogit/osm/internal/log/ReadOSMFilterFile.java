@@ -18,7 +18,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
-import com.google.inject.Inject;
 
 /**
  * Reads the file filter associated to a previously executed OSM import operation.
@@ -27,18 +26,13 @@ public class ReadOSMFilterFile extends AbstractGeoGitOp<Optional<String>> {
 
     private OSMLogEntry entry;
 
-    @Inject
-    public ReadOSMFilterFile() {
-
-    }
-
     public ReadOSMFilterFile setEntry(OSMLogEntry entry) {
         this.entry = entry;
         return this;
     }
 
     @Override
-    public Optional<String> call() {
+    protected Optional<String> _call() {
         Preconditions.checkNotNull(entry);
         URL url = command(ResolveOSMLogfile.class).call();
         File logfile = new File(url.getFile());

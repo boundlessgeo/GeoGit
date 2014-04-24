@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.GlobalInjectorBuilder;
+import org.geogit.api.GlobalContextBuilder;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.api.SymRef;
@@ -27,7 +27,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
-import com.google.inject.Inject;
 
 /**
  * Update remote refs along with associated objects.
@@ -44,21 +43,6 @@ public class PushOp extends AbstractGeoGitOp<Boolean> {
     private List<String> refSpecs = new ArrayList<String>();
 
     private Supplier<Optional<Remote>> remote;
-
-    private Repository localRepository;
-
-    private final DeduplicationService deduplicationService;
-
-    /**
-     * Constructs a new {@code PushOp} with the provided parameters.
-     * 
-     * @param localRepository the local geogit repository
-     */
-    @Inject
-    public PushOp(final Repository localRepository, final DeduplicationService deduplicationService) {
-        this.localRepository = localRepository;
-        this.deduplicationService = deduplicationService;
-    }
 
     /**
      * @param all if {@code true}, push all refs under refs/heads/
@@ -105,7 +89,7 @@ public class PushOp extends AbstractGeoGitOp<Boolean> {
      * @see org.geogit.api.AbstractGeoGitOp#call()
      */
     @Override
-    public Boolean call() {
+    protected Boolean _call() {
         if (remote == null) {
             setRemote("origin");
         }
@@ -236,7 +220,9 @@ public class PushOp extends AbstractGeoGitOp<Boolean> {
     public Optional<IRemoteRepo> getRemoteRepo(Remote remote) {
         Hints remoteHints = new Hints();
         remoteHints.set(Hints.REMOTES_READ_ONLY, Boolean.FALSE);
-        return RemoteUtils.newRemote(GlobalInjectorBuilder.builder.build(remoteHints), remote,
+        Repository localRepository = repository();
+        DeduplicationService deduplicationService = context.deduplicationService();
+        return RemoteUtils.newRemote(GlobalContextBuilder.builder.build(remoteHints), remote,
                 localRepository, deduplicationService);
     }
 }

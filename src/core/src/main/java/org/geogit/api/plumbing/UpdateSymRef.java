@@ -8,16 +8,17 @@ package org.geogit.api.plumbing;
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
+import org.geogit.api.hooks.Hookable;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
-import com.google.inject.Inject;
 
 /**
  * Update the object name stored in a {@link Ref} safely.
  * <p>
  * 
  */
+@Hookable(name = "update-sym-ref")
 public class UpdateSymRef extends AbstractGeoGitOp<Optional<Ref>> {
 
     private String name;
@@ -29,13 +30,6 @@ public class UpdateSymRef extends AbstractGeoGitOp<Optional<Ref>> {
     private boolean delete;
 
     private String reason;
-
-    /**
-     * Constructs a new {@code UpdateSymRef} operation.
-     */
-    @Inject
-    public UpdateSymRef() {
-    }
 
     /**
      * @param name the name of the ref to update
@@ -90,17 +84,17 @@ public class UpdateSymRef extends AbstractGeoGitOp<Optional<Ref>> {
      * The new ref if created or updated a sym ref, or the old one if deleting it
      */
     @Override
-    public Optional<Ref> call() {
+    protected Optional<Ref> _call() {
         Preconditions.checkState(name != null, "name has not been set");
         Preconditions.checkState(delete || newValue != null, "value has not been set");
 
         if (oldValue != null) {
             String storedValue;
             try {
-                storedValue = getRefDatabase().getSymRef(name);
+                storedValue = refDatabase().getSymRef(name);
             } catch (IllegalArgumentException e) {
                 // may be updating what used to be a direct ref to be a symbolic ref
-                storedValue = getRefDatabase().getRef(name);
+                storedValue = refDatabase().getRef(name);
             }
             Preconditions.checkState(oldValue.equals(storedValue), "Old value (" + storedValue
                     + ") doesn't match expected value '" + oldValue + "'");
@@ -109,12 +103,12 @@ public class UpdateSymRef extends AbstractGeoGitOp<Optional<Ref>> {
         if (delete) {
             Optional<Ref> oldRef = command(RefParse.class).setName(name).call();
             if (oldRef.isPresent()) {
-                getRefDatabase().remove(name);
+                refDatabase().remove(name);
             }
             return oldRef;
         }
 
-        getRefDatabase().putSymRef(name, newValue);
+        refDatabase().putSymRef(name, newValue);
         Optional<Ref> ref = command(RefParse.class).setName(name).call();
         return ref;
     }

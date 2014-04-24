@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.geogit.api.Bucket;
 import org.geogit.api.GeoGIT;
+import org.geogit.api.Context;
 import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
@@ -35,7 +36,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
-import com.google.inject.Injector;
 
 /**
  * An implementation of a remote repository that exists on the local machine.
@@ -46,7 +46,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
 
     private GeoGIT remoteGeoGit;
 
-    private Injector injector;
+    private Context injector;
 
     private File workingDirectory;
 
@@ -58,7 +58,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
      * @param injector the Guice injector for the new repository
      * @param workingDirectory the directory of the remote repository
      */
-    public LocalRemoteRepo(Injector injector, File workingDirectory, Repository localRepository) {
+    public LocalRemoteRepo(Context injector, File workingDirectory, Repository localRepository) {
         super(localRepository);
         this.injector = injector;
         this.workingDirectory = workingDirectory;
@@ -160,7 +160,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
 
         } catch (Exception e) {
             for (ObjectId oid : touchedIds) {
-                localRepository.getObjectDatabase().delete(oid);
+                localRepository.objectDatabase().delete(oid);
             }
             Throwables.propagate(e);
         } finally {
@@ -202,14 +202,13 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
                     remoteGeoGit.command(UpdateSymRef.class).setName(Ref.HEAD)
                             .setNewValue(ref.getName()).call();
                     RevCommit commit = remoteGeoGit.getRepository().getCommit(ref.getObjectId());
-                    remoteGeoGit.getRepository().getWorkingTree()
-                            .updateWorkHead(commit.getTreeId());
-                    remoteGeoGit.getRepository().getIndex().updateStageHead(commit.getTreeId());
+                    remoteGeoGit.getRepository().workingTree().updateWorkHead(commit.getTreeId());
+                    remoteGeoGit.getRepository().index().updateStageHead(commit.getTreeId());
                 }
             }
         } catch (Exception e) {
             for (ObjectId oid : touchedIds) {
-                remoteGeoGit.getRepository().getObjectDatabase().delete(oid);
+                remoteGeoGit.getRepository().objectDatabase().delete(oid);
             }
             Throwables.propagate(e);
         } finally {
@@ -267,7 +266,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
     private void walkTree(ObjectId treeId, Repository from, Repository to,
             ObjectInserter objectInserter) {
         // See if we already have it
-        if (to.getObjectDatabase().exists(treeId)) {
+        if (to.objectDatabase().exists(treeId)) {
             return;
         }
 
@@ -299,7 +298,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
     private void moveObject(ObjectId objectId, Repository from, Repository to,
             ObjectInserter objectInserter) {
         // See if we already have it
-        if (to.getObjectDatabase().exists(objectId)) {
+        if (to.objectDatabase().exists(objectId)) {
             return;
         }
 

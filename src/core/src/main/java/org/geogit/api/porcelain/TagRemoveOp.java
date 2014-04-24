@@ -15,7 +15,6 @@ import org.geogit.api.plumbing.UpdateRef;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
-import com.google.inject.Inject;
 
 /**
  * Removes a tag
@@ -26,20 +25,13 @@ public class TagRemoveOp extends AbstractGeoGitOp<RevTag> {
     private String name;
 
     /**
-     * Constructs a new {@code TagRemoveOp}
-     */
-    @Inject
-    public TagRemoveOp() {
-
-    }
-
-    /**
      * Executes the tag removal operation.
      * 
      * @return the tag to remove
      * 
      */
-    public RevTag call() throws RuntimeException {
+    @Override
+    protected RevTag _call() throws RuntimeException {
         String fullPath = Ref.TAGS_PREFIX + name;
         Optional<RevObject> revTag = command(RevObjectParse.class).setRefSpec(fullPath).call();
         Preconditions.checkArgument(revTag.isPresent(), "Wrong tag name: " + name);

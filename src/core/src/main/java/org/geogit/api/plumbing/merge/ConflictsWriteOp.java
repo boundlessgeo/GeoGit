@@ -13,9 +13,9 @@ public class ConflictsWriteOp extends AbstractGeoGitOp<Void> {
     private List<Conflict> conflicts;
 
     @Override
-    public Void call() {
+    protected  Void _call() {
         for (Conflict conflict : conflicts) {
-            getIndex().getDatabase().addConflict(null, conflict);
+            stagingDatabase().addConflict(null, conflict);
         }
         return null;
 

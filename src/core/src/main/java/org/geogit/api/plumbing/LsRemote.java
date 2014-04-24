@@ -8,7 +8,7 @@ package org.geogit.api.plumbing;
 import java.io.IOException;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.GlobalInjectorBuilder;
+import org.geogit.api.GlobalContextBuilder;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.remote.IRemoteRepo;
@@ -24,7 +24,6 @@ import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
-import com.google.inject.Inject;
 
 /**
  * Connects to the specified remote, retrieves its {@link Ref refs}, closes the remote connection
@@ -40,21 +39,14 @@ public class LsRemote extends AbstractGeoGitOp<ImmutableSet<Ref>> {
 
     private boolean local;
 
-    private final Repository localRepository;
-
-    private final DeduplicationService deduplicationService;
-
     /**
      * Constructs a new {@code LsRemote}.
      */
-    @Inject
-    public LsRemote(Repository repository, DeduplicationService deduplicationService) {
+    public LsRemote() {
         Optional<Remote> abstent = Optional.absent();
         this.remote = Suppliers.ofInstance(abstent);
         this.getHeads = true;
         this.getTags = true;
-        this.localRepository = repository;
-        this.deduplicationService = deduplicationService;
     }
 
     /**
@@ -102,7 +94,7 @@ public class LsRemote extends AbstractGeoGitOp<ImmutableSet<Ref>> {
      */
     @SuppressWarnings("deprecation")
     @Override
-    public ImmutableSet<Ref> call() {
+    protected  ImmutableSet<Ref> _call() {
         Preconditions.checkState(remote.get().isPresent(), "Remote was not provided");
         final Remote remoteConfig = remote.get().get();
 
@@ -138,7 +130,9 @@ public class LsRemote extends AbstractGeoGitOp<ImmutableSet<Ref>> {
      * @return an interface for the remote repository
      */
     public Optional<IRemoteRepo> getRemoteRepo(Remote remote) {
-        return RemoteUtils.newRemote(GlobalInjectorBuilder.builder.build(Hints.readOnly()), remote,
+        Repository localRepository = repository();
+        DeduplicationService deduplicationService = context.deduplicationService();
+        return RemoteUtils.newRemote(GlobalContextBuilder.builder.build(Hints.readOnly()), remote,
                 localRepository, deduplicationService);
     }
 

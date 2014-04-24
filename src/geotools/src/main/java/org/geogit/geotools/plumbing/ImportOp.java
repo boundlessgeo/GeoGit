@@ -26,6 +26,7 @@ import org.geogit.api.data.ForwardingFeatureSource;
 import org.geogit.api.plumbing.LsTreeOp;
 import org.geogit.api.plumbing.LsTreeOp.Strategy;
 import org.geogit.api.plumbing.RevObjectParse;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.geotools.plumbing.GeoToolsOpException.StatusCode;
 import org.geogit.repository.WorkingTree;
 import org.geotools.data.DataStore;
@@ -53,7 +54,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.google.inject.Inject;
 import com.vividsolutions.jts.geom.CoordinateSequenceFactory;
 import com.vividsolutions.jts.geom.impl.PackedCoordinateSequenceFactory;
 
@@ -62,7 +62,7 @@ import com.vividsolutions.jts.geom.impl.PackedCoordinateSequenceFactory;
  * 
  * @see DataStore
  */
-
+@Hookable(name = "import")
 public class ImportOp extends AbstractGeoGitOp<RevTree> {
 
     private boolean all = false;
@@ -101,13 +101,6 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
     private boolean usePaging = true;
 
     /**
-     * Constructs a new {@code ImportOp} operation.
-     */
-    @Inject
-    public ImportOp() {
-    }
-
-    /**
      * Executes the import operation using the parameters that have been specified. Features will be
      * added to the working tree, and a new working tree will be constructed. Either {@code all} or
      * {@code table}, but not both, must be set prior to the import process.
@@ -115,7 +108,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
      * @return RevTree the new working tree
      */
     @Override
-    public RevTree call() {
+    protected  RevTree _call() {
 
         // check preconditions and get the actual list of type names to import
         final String[] typeNames = checkPreconditions();
@@ -129,7 +122,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             overwrite = false;
         }
 
-        final WorkingTree workTree = getWorkTree();
+        final WorkingTree workTree = workingTree();
 
         final boolean destPathProvided = destPath != null;
         if (destPathProvided && overwrite) {

@@ -7,10 +7,9 @@ package org.geogit.api.plumbing;
 
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.RevTreeBuilder;
+import org.geogit.api.plumbing.diff.MutableTree;
 import org.geogit.storage.ObjectDatabase;
 import org.geogit.storage.StagingDatabase;
-
-import com.google.inject.Inject;
 
 /**
  * Creates a new {@link RevTreeBuilder} backed by the specified object database (the repository's by
@@ -19,22 +18,6 @@ import com.google.inject.Inject;
 public class CreateTree extends AbstractGeoGitOp<RevTreeBuilder> {
 
     private boolean index;
-
-    private ObjectDatabase odb;
-
-    private StagingDatabase indexDb;
-
-    /**
-     * Constructs a new {@code CreateTree} operation with the specified parameters.
-     * 
-     * @param odb the repository object database
-     * @param indexDb the staging database
-     */
-    @Inject
-    public CreateTree(ObjectDatabase odb, StagingDatabase indexDb) {
-        this.odb = odb;
-        this.indexDb = indexDb;
-    }
 
     /**
      * @param toIndexDb if {@code true}, the returned tree is backed by the {@link StagingDatabase},
@@ -52,8 +35,8 @@ public class CreateTree extends AbstractGeoGitOp<RevTreeBuilder> {
      * @return the {@link MutableTree} that was created by the operation
      */
     @Override
-    public RevTreeBuilder call() {
-        ObjectDatabase storage = index ? indexDb : odb;
+    protected  RevTreeBuilder _call() {
+        ObjectDatabase storage = index ? stagingDatabase() : objectDatabase();
         return new RevTreeBuilder(storage);
     }
 

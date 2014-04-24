@@ -4,7 +4,8 @@
  */
 package org.geogit.cli;
 
-import org.geogit.api.InjectorBuilder;
+import org.geogit.api.Context;
+import org.geogit.api.ContextBuilder;
 import org.geogit.di.GeogitModule;
 import org.geogit.di.PluginDefaults;
 import org.geogit.di.PluginsModule;
@@ -31,12 +32,11 @@ import org.geogit.storage.sqlite.XerialStagingDatabase;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.MapBinder;
 import com.google.inject.util.Modules;
 
-public class CLIInjectorBuilder extends InjectorBuilder {
+public class CLIContextBuilder extends ContextBuilder {
 
     private static final VersionedFormat DEFAULT_OBJECTS = new VersionedFormat("bdbje", "0.1");
 
@@ -52,10 +52,11 @@ public class CLIInjectorBuilder extends InjectorBuilder {
             DEFAULT_GRAPH);
 
     @Override
-    public Injector build(Hints hints) {
-        return Guice.createInjector(Modules.override(new GeogitModule(), new CachingModule()).with(
-                new MetricsModule(), new PluginsModule(), new DefaultPlugins(),
-                new HintsModule(hints)));
+    public Context build(Hints hints) {
+        return Guice.createInjector(
+                Modules.override(new GeogitModule(), new CachingModule()).with(new MetricsModule(),
+                        new PluginsModule(), new DefaultPlugins(), new HintsModule(hints)))
+                .getInstance(org.geogit.api.Context.class);
     }
 
     public static class DefaultPlugins extends AbstractModule {

@@ -12,6 +12,7 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
 
+import org.geogit.api.Context;
 import org.geogit.api.Remote;
 import org.geogit.repository.Repository;
 import org.geogit.storage.DeduplicationService;
@@ -19,7 +20,6 @@ import org.geogit.storage.DeduplicationService;
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
-import com.google.inject.Injector;
 
 /**
  * Provides utilities for creating interfaces to remote repositories.
@@ -35,7 +35,7 @@ public class RemoteUtils {
      * @return an {@link Optional} of the interface to the remote repository, or
      *         {@link Optional#absent()} if a connection to the remote could not be established.
      */
-    public static Optional<IRemoteRepo> newRemote(Injector injector, Remote remoteConfig,
+    public static Optional<IRemoteRepo> newRemote(Context injector, Remote remoteConfig,
             Repository localRepository, DeduplicationService deduplicationService) {
 
         try {

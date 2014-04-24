@@ -16,7 +16,6 @@ import org.geogit.api.plumbing.diff.FeatureDiff;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Supplier;
-import com.google.inject.Inject;
 
 /**
  * Compares two features in the repository and returns a {code FeatureDiff} object representing it.
@@ -30,13 +29,6 @@ public class DiffFeature extends AbstractGeoGitOp<FeatureDiff> {
     private NodeRef oldNodeRef;
 
     private NodeRef newNodeRef;
-
-    /**
-     * Constructs a new instance of the {@code DiffFeature} operation.
-     */
-    @Inject
-    public DiffFeature() {
-    }
 
     /**
      * @param oldNodeRef the ref that points to the "old" version of the feature to compare
@@ -63,7 +55,7 @@ public class DiffFeature extends AbstractGeoGitOp<FeatureDiff> {
      * @see FeatureDiff
      */
     @Override
-    public FeatureDiff call() throws IllegalArgumentException {
+    protected  FeatureDiff _call() throws IllegalArgumentException {
         checkNotNull(oldNodeRef, "old version not specified");
         checkNotNull(newNodeRef, "new version not specified");
         String oldPath = removeRef(oldNodeRef.path());

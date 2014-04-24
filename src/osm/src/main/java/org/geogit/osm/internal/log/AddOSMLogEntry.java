@@ -13,7 +13,6 @@ import org.geogit.api.AbstractGeoGitOp;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
-import com.google.inject.Inject;
 
 /**
  * Adds an entry to the OSM log. The osm is used to keep track of trees created after importing from
@@ -25,18 +24,13 @@ public class AddOSMLogEntry extends AbstractGeoGitOp<Void> {
 
     private OSMLogEntry entry;
 
-    @Inject
-    public AddOSMLogEntry() {
-
-    }
-
     public AddOSMLogEntry setEntry(OSMLogEntry entry) {
         this.entry = entry;
         return this;
     }
 
     @Override
-    public Void call() {
+    protected  Void _call() {
         URL file = command(ResolveOSMLogfile.class).call();
         try {
             Files.append(entry.toString() + "\n", new File(file.getFile()), Charsets.UTF_8);

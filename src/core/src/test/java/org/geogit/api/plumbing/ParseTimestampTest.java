@@ -9,6 +9,7 @@ import java.io.File;
 import java.util.Date;
 
 import org.geogit.api.GeoGIT;
+import org.geogit.api.Context;
 import org.geogit.api.MemoryModule;
 import org.geogit.api.Platform;
 import org.geogit.api.TestPlatform;
@@ -21,7 +22,6 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.util.Modules;
 
 /**
@@ -51,8 +51,8 @@ public class ParseTimestampTest extends Assert {
                 return REFERENCE_DATE.getTime();
             }
         };
-        Injector injector = Guice.createInjector(Modules.override(new GeogitModule()).with(
-                new MemoryModule(testPlatform)));
+        Context injector = Guice.createInjector(Modules.override(new GeogitModule()).with(
+                new MemoryModule(testPlatform))).getInstance(Context.class);
 
         fakeGeogit = new GeoGIT(injector, workingDirectory);
         assertNotNull(fakeGeogit.getOrCreateRepository());

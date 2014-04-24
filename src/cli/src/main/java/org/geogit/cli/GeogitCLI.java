@@ -31,9 +31,11 @@ import jline.console.CursorBuffer;
 import org.geogit.api.DefaultPlatform;
 import org.geogit.api.DefaultProgressListener;
 import org.geogit.api.GeoGIT;
-import org.geogit.api.GlobalInjectorBuilder;
+import org.geogit.api.GlobalContextBuilder;
+import org.geogit.api.Context;
 import org.geogit.api.Platform;
 import org.geogit.api.ProgressListener;
+import org.geogit.api.hooks.CannotRunGeogitOperationException;
 import org.geogit.api.plumbing.ResolveGeogitDir;
 import org.geogit.api.porcelain.ConfigException;
 import org.geogit.api.porcelain.ConfigGet;
@@ -68,7 +70,6 @@ import com.google.common.io.InputSupplier;
 import com.google.common.io.Resources;
 import com.google.inject.Binding;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
 
@@ -86,14 +87,14 @@ public class GeogitCLI {
     private static final Logger LOGGER = LoggerFactory.getLogger(GeogitCLI.class);
 
     static {
-        GlobalInjectorBuilder.builder = new CLIInjectorBuilder();
+        GlobalContextBuilder.builder = new CLIContextBuilder();
     }
 
     private File geogitDirLoggingConfiguration;
 
-    private Injector commandsInjector;
+    private com.google.inject.Injector commandsInjector;
 
-    private Injector geogitInjector;
+    private Context geogitInjector;
 
     private Platform platform;
 
@@ -243,7 +244,7 @@ public class GeogitCLI {
     }
 
     public GeoGIT newGeoGIT(Hints hints) {
-        Injector inj = newGeogitInjector(hints);
+        Context inj = newGeogitInjector(hints);
         GeoGIT geogit = new GeoGIT(inj, platform.pwd());
         try {
             geogit.getRepository();
@@ -257,11 +258,11 @@ public class GeogitCLI {
      * @return the Guice injector being used by the command line interface. If one hasn't been made,
      *         it will be created.
      */
-    public Injector getGeogitInjector() {
+    public Context getGeogitInjector() {
         return getGeogitInjector(this.hints);
     }
 
-    private Injector getGeogitInjector(Hints hints) {
+    private Context getGeogitInjector(Hints hints) {
         if (this.geogitInjector == null || !Objects.equal(this.hints, hints)) {
             // System.err.println("Injector hints: " + hints);
             geogitInjector = newGeogitInjector(hints);
@@ -269,8 +270,8 @@ public class GeogitCLI {
         return geogitInjector;
     }
 
-    private Injector newGeogitInjector(Hints hints) {
-        Injector geogitInjector = GlobalInjectorBuilder.builder.build(hints);
+    private Context newGeogitInjector(Hints hints) {
+        Context geogitInjector = GlobalContextBuilder.builder.build(hints);
         return geogitInjector;
     }
 
@@ -468,6 +469,10 @@ public class GeogitCLI {
             exception = paramValidationError;
             consoleMessage = paramValidationError.getMessage();
 
+        } catch (CannotRunGeogitOperationException cannotRun) {
+
+            consoleMessage = cannotRun.getMessage();
+
         } catch (CommandFailedException cmdFailed) {
             exception = cmdFailed;
             if (null == cmdFailed.getMessage()) {
@@ -513,7 +518,7 @@ public class GeogitCLI {
      * @throws exceptions thrown by the executed commands.
      */
     private void executeInternal(String... args) throws ParameterException, CommandFailedException,
-            IOException {
+            IOException, CannotRunGeogitOperationException {
         tryConfigureLogging();
 
         JCommander mainCommander = newCommandParser();

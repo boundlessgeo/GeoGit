@@ -34,13 +34,6 @@ public class BranchRenameOp extends AbstractGeoGitOp<Ref> {
     private String oldBranchName;
 
     /**
-     * Constructs a new {@code BranchRenameOp}
-     */
-    public BranchRenameOp() {
-
-    }
-
-    /**
      * @param force whether to force the renaming of a branch to a branch name that already exists
      * @return {@code this}
      */
@@ -76,7 +69,7 @@ public class BranchRenameOp extends AbstractGeoGitOp<Ref> {
      *         specified doesn't exist or if oldBranchName doesn't resolve to a branch
      */
     @Override
-    public Ref call() {
+    protected  Ref _call() {
         checkState(newBranchName != null, "New branch name not specified");
         checkState(!newBranchName.equals(oldBranchName), "Done");
         Optional<Ref> branch = Optional.absent();

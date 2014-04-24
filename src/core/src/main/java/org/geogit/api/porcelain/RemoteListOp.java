@@ -13,7 +13,6 @@ import org.geogit.storage.ConfigDatabase;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
-import com.google.inject.Inject;
 
 /**
  * Return a list of all of the remotes from the local config database.
@@ -22,25 +21,14 @@ import com.google.inject.Inject;
  */
 public class RemoteListOp extends AbstractGeoGitOp<ImmutableList<Remote>> {
 
-    final private ConfigDatabase config;
-
-    /**
-     * Constructs a new {@code RemoteListOp} with the given config database.
-     * 
-     * @param config where to find the remotes
-     */
-    @Inject
-    public RemoteListOp(ConfigDatabase config) {
-        this.config = config;
-    }
-
     /**
      * Executes the remote-list operation.
      * 
      * @return {@code List<Remote>} of all remotes found in the config database, may be empty.
      */
     @Override
-    public ImmutableList<Remote> call() {
+    protected ImmutableList<Remote> _call() {
+        ConfigDatabase config = configDatabase();
         List<String> remotes = config.getAllSubsections("remote");
         List<Remote> allRemotes = new ArrayList<Remote>();
         for (String remoteName : remotes) {

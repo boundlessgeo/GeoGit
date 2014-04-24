@@ -12,7 +12,6 @@ import org.geogit.api.porcelain.ConfigOp.ConfigScope;
 import org.geogit.di.CanRunDuringConflict;
 
 import com.google.common.base.Optional;
-import com.google.inject.Inject;
 
 /**
  * Get a repository or global options
@@ -31,14 +30,6 @@ public class ConfigGet extends AbstractGeoGitOp<Optional<String>> {
     private String name;
 
     /**
-     * Constructs a new {@code ConfigGet}
-     * 
-     */
-    @Inject
-    public ConfigGet() {
-    }
-
-    /**
      * Executes the config command with the specified options.
      * 
      * @return Optional<String> if querying for a value, empty Optional if no matching name was
@@ -47,7 +38,7 @@ public class ConfigGet extends AbstractGeoGitOp<Optional<String>> {
      *         the exception's statusCode.
      */
     @Override
-    public Optional<String> call() {
+    protected  Optional<String> _call() {
         ConfigScope scope = global ? ConfigScope.GLOBAL : ConfigScope.LOCAL;
         Optional<Map<String, String>> result = command(ConfigOp.class)
                 .setAction(ConfigAction.CONFIG_GET).setName(name).setScope(scope).call();

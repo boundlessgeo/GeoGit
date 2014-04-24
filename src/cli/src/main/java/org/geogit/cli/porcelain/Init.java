@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.geogit.api.GeoGIT;
+import org.geogit.api.Context;
 import org.geogit.api.plumbing.ResolveGeogitDir;
 import org.geogit.api.porcelain.InitOp;
 import org.geogit.cli.AbstractCommand;
@@ -26,7 +27,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
-import com.google.inject.Injector;
 
 /**
  * This command creates an empty geogit repository - basically a .geogit directory with
@@ -77,7 +77,7 @@ public class Init extends AbstractCommand implements CLICommand {
         {
             GeoGIT geogit = cli.getGeogit();
             if (geogit == null) {
-                Injector geogitInjector = cli.getGeogitInjector();
+                Context geogitInjector = cli.getGeogitInjector();
                 geogit = new GeoGIT(geogitInjector);
             }
             repoExisted = determineIfRepoExists(targetDirectory, geogit);

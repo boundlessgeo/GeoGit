@@ -10,15 +10,14 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.geogit.api.Context;
 import org.geogit.di.GeogitModule;
 import org.slf4j.Logger;
-import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteConfig.SynchronousMode;
 import org.sqlite.SQLiteDataSource;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.util.Modules;
 
 /**
@@ -72,9 +71,9 @@ public class Xerial {
     /**
      * Creates the injector to enable xerial sqlite storage.
      */
-    public static Injector injector() {
+    public static Context injector() {
         return Guice.createInjector(Modules.override(new GeogitModule()).with(
-                new XerialSQLiteModule()));
+                new XerialSQLiteModule())).getInstance(Context.class);
     }
 
     public static SQLiteDataSource newDataSource(File db) {
