@@ -23,7 +23,6 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterators;
-import com.google.inject.Inject;
 
 /**
  * Removes untracked features from the working tree
@@ -34,20 +33,16 @@ public class CleanOp extends AbstractGeoGitOp<WorkingTree> {
 
     private String path;
 
-    @Inject
-    public CleanOp() {
-    }
-
     /**
      * @see java.util.concurrent.Callable#call()
      */
-    public WorkingTree call() {
+    protected  WorkingTree _call() {
 
         if (path != null) {
             // check that is a valid path
             NodeRef.checkValidPath(path);
 
-            Optional<NodeRef> ref = command(FindTreeChild.class).setParent(getWorkTree().getTree())
+            Optional<NodeRef> ref = command(FindTreeChild.class).setParent(workingTree().getTree())
                     .setChildPath(path).setIndex(true).call();
 
             Preconditions.checkArgument(ref.isPresent(), "pathspec '%s' did not match any tree",
@@ -72,9 +67,9 @@ public class CleanOp extends AbstractGeoGitOp<WorkingTree> {
             }
         });
 
-        getWorkTree().delete(addedPaths);
+        workingTree().delete(addedPaths);
 
-        return getWorkTree();
+        return workingTree();
 
     }
 

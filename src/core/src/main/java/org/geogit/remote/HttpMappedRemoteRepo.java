@@ -25,6 +25,8 @@ import org.geogit.api.RevCommit;
 import org.geogit.api.RevObject;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.SymRef;
+import org.geogit.api.plumbing.CheckSparsePath;
+import org.geogit.api.plumbing.FindCommonAncestor;
 import org.geogit.api.plumbing.RevObjectParse;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.porcelain.DiffOp;
@@ -120,9 +122,8 @@ class HttpMappedRemoteRepo extends AbstractMappedRemoteRepo {
                         Ref remoteRef = HttpUtils.parseRef(line);
                         Ref newRef = remoteRef;
                         if (!(newRef instanceof SymRef)
-                                && localRepository.getGraphDatabase().exists(
-                                        remoteRef.getObjectId())) {
-                            ObjectId mappedCommit = localRepository.getGraphDatabase().getMapping(
+                                && localRepository.graphDatabase().exists(remoteRef.getObjectId())) {
+                            ObjectId mappedCommit = localRepository.graphDatabase().getMapping(
                                     remoteRef.getObjectId());
                             if (mappedCommit != null) {
                                 newRef = new Ref(remoteRef.getName(), mappedCommit);
@@ -328,21 +329,22 @@ class HttpMappedRemoteRepo extends AbstractMappedRemoteRepo {
             for (int i = 0; i < commit.getParentIds().size(); i++) {
                 ObjectId parentId = commit.getParentIds().get(i);
                 if (i != 0) {
-                    Optional<ObjectId> commonAncestor = from.getGraphDatabase()
-                            .findLowestCommonAncestor(commit.getParentIds().get(0), parentId);
+                    Optional<ObjectId> commonAncestor = from.command(FindCommonAncestor.class)
+                            .setLeftId(commit.getParentIds().get(0)).setRightId(parentId).call();
                     if (commonAncestor.isPresent()) {
-                        if (from.getGraphDatabase().isSparsePath(parentId, commonAncestor.get())) {
+                        if (from.command(CheckSparsePath.class).setStart(parentId)
+                                .setEnd(commonAncestor.get()).call()) {
                             // This should be the base commit to preserve changes that were filtered
                             // out.
-                            newParents.add(0, from.getGraphDatabase().getMapping(parentId));
+                            newParents.add(0, from.graphDatabase().getMapping(parentId));
                             continue;
                         }
                     }
                 }
-                newParents.add(from.getGraphDatabase().getMapping(parentId));
+                newParents.add(from.graphDatabase().getMapping(parentId));
             }
             if (newParents.size() > 0) {
-                parent = from.getGraphDatabase().getMapping(newParents.get(0));
+                parent = from.graphDatabase().getMapping(newParents.get(0));
             }
             Iterator<DiffEntry> diffIter = from.command(DiffOp.class).setNewVersion(commitId)
                     .setOldVersion(parent).setReportTrees(true).call();
@@ -389,8 +391,8 @@ class HttpMappedRemoteRepo extends AbstractMappedRemoteRepo {
                 String line = rd.readLine();
                 if (line != null) {
                     ObjectId remoteCommitId = ObjectId.valueOf(line);
-                    from.getGraphDatabase().map(commit.getId(), remoteCommitId);
-                    from.getGraphDatabase().map(remoteCommitId, commit.getId());
+                    from.graphDatabase().map(commit.getId(), remoteCommitId);
+                    from.graphDatabase().map(remoteCommitId, commit.getId());
                 }
 
             } catch (IOException e) {

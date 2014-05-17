@@ -5,7 +5,7 @@
 
   <groupId>org.geogit</groupId>
   <artifactId>geogit</artifactId>
-  <version>0.8-SNAPSHOT</version>
+  <version>0.9-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>GeoGit</name>
 
@@ -133,13 +133,12 @@
     <blueprints.version>2.4.0</blueprints.version>
     <compress-lzf.version>0.9.8</compress-lzf.version>
     <cucumber-java.version>1.0.14</cucumber-java.version>
-    <gs.version>2.4.4</gs.version>
     <gson.version>2.2.2</gson.version>
     <gt.version>10.5</gt.version>
     <guava.version>14.0.1</guava.version>
     <guice.version>3.0</guice.version>
     <jcommander.version>1.30</jcommander.version>
-    <jettison.version>1.0.1</jettison.version>
+    <jettison.version>1.0.1</jettison.version> <!-- matches version used in geoserver -->
     <jline.version>2.11</jline.version>
     <jsr305.version>1.3.7</jsr305.version>
     <jts.version>1.13</jts.version>
@@ -147,14 +146,14 @@
     <logback.version>1.0.13</logback.version>
     <mockito.version>1.9.5</mockito.version>
     <mockrunner.version>0.3.6</mockrunner.version>
-    <neo4j.version>1.9.2</neo4j.version>
-    <restlet.version>2.0.15</restlet.version>
+    <restlet.version>1.0.8</restlet.version> <!-- matches version used in geoserver -->
     <slf4j.version>1.7.5</slf4j.version>
     <sqljdbc4.version>3.0</sqljdbc4.version>
     <osmosis.version>0.43-RELEASE</osmosis.version>
     <xmlunit.version>1.3</xmlunit.version>
     
     <test.maxHeapSize>512M</test.maxHeapSize>
+    <test.tmpDir>${project.build.directory}</test.tmpDir> <!-- use the provided tmp dir for tests, defaults to project's target/ directory -->
     <maven.build.timestamp.format>dd-MMM-yyyy HH:mm</maven.build.timestamp.format>
     <build.timestamp>${maven.build.timestamp}</build.timestamp>
     <online.skip.pattern>**/*OnlineTest.java</online.skip.pattern>
@@ -168,11 +167,24 @@
         <groupId>com.google.inject</groupId>
         <artifactId>guice</artifactId>
         <version>${guice.version}</version>
+        <classifier>no_aop</classifier>
+        <exclusions>
+          <exclusion>
+           <groupId>aopalliance</groupId>
+           <artifactId>aopalliance</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>com.google.inject.extensions</groupId>
         <artifactId>guice-multibindings</artifactId>
         <version>${guice.version}</version>
+        <exclusions>
+          <exclusion>
+           <groupId>com.google.inject</groupId>
+           <artifactId>guice</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>com.vividsolutions</groupId>
@@ -216,26 +228,6 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.geoserver</groupId>
-        <artifactId>ows</artifactId>
-        <version>${gs.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.geoserver</groupId>
-        <artifactId>main</artifactId>
-        <version>${gs.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.geoserver</groupId>
-        <artifactId>wfs</artifactId>
-        <version>${gs.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.geoserver</groupId>
-        <artifactId>rest</artifactId>
-        <version>${gs.version}</version>
-      </dependency>
-      <dependency>
         <!-- Google Common Libraries. Featuring com.google.collect collection classes -->
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
@@ -251,18 +243,6 @@
         <groupId>com.ning</groupId>
         <artifactId>compress-lzf</artifactId>
         <version>${compress-lzf.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.neo4j</groupId>
-        <artifactId>neo4j</artifactId>
-        <version>${neo4j.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.neo4j</groupId>
-        <artifactId>neo4j-kernel</artifactId>
-        <version>${neo4j.version}</version>
-        <type>test-jar</type>
       </dependency>
 
       <!-- Berkeley DB JE -->
@@ -323,23 +303,28 @@
         <version>${blueprints.version}</version>
       </dependency>
       <dependency>
+        <groupId>com.tinkerpop.blueprints</groupId>
+        <artifactId>blueprints-test</artifactId>
+        <version>${blueprints.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.tinkerpop.gremlin</groupId>
         <artifactId>gremlin-java</artifactId>
         <version>${blueprints.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.tinkerpop.blueprints</groupId>
-        <artifactId>blueprints-neo4j-graph</artifactId>
-        <version>${blueprints.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.restlet.jse</groupId>
-        <artifactId>org.restlet.ext.jetty</artifactId>
+        <groupId>org.restlet</groupId>
+        <artifactId>org.restlet</artifactId>
         <version>${restlet.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.restlet.jee</groupId>
-        <artifactId>org.restlet.ext.servlet</artifactId>
+        <groupId>com.noelios.restlet</groupId>
+        <artifactId>com.noelios.restlet.ext.jetty</artifactId>
+        <version>${restlet.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.noelios.restlet</groupId>
+        <artifactId>com.noelios.restlet.ext.servlet</artifactId>
         <version>${restlet.version}</version>
       </dependency>
 
@@ -385,20 +370,6 @@
         <groupId>xmlunit</groupId>
         <artifactId>xmlunit</artifactId>
         <version>${xmlunit.version}</version>
-        <scope>test</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.geoserver</groupId>
-        <artifactId>main</artifactId>
-        <version>${gs.version}</version>
-        <classifier>tests</classifier>
-        <scope>test</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.geoserver</groupId>
-        <artifactId>wfs</artifactId>
-        <version>${gs.version}</version>
-        <classifier>tests</classifier>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -477,6 +448,10 @@
           </excludes>
           <forkMode>pertest</forkMode>
           <argLine>-Xms256m -Xmx512m</argLine>
+          <workingDirectory>${project.build.directory}</workingDirectory>
+          <systemPropertyVariables>
+            <java.io.tmpdir>${test.tmpDir}</java.io.tmpdir>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
       <plugin>

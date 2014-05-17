@@ -12,12 +12,14 @@ import java.util.List;
 
 import org.geogit.api.Bucket;
 import org.geogit.api.GeoGIT;
+import org.geogit.api.Context;
 import org.geogit.api.Node;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
 import org.geogit.api.RevObject;
 import org.geogit.api.RevObject.TYPE;
+import org.geogit.api.RevTag;
 import org.geogit.api.RevTree;
 import org.geogit.api.SymRef;
 import org.geogit.api.plumbing.ForEachRef;
@@ -34,7 +36,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
-import com.google.inject.Injector;
 
 /**
  * An implementation of a remote repository that exists on the local machine.
@@ -45,7 +46,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
 
     private GeoGIT remoteGeoGit;
 
-    private Injector injector;
+    private Context injector;
 
     private File workingDirectory;
 
@@ -57,7 +58,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
      * @param injector the Guice injector for the new repository
      * @param workingDirectory the directory of the remote repository
      */
-    public LocalRemoteRepo(Injector injector, File workingDirectory, Repository localRepository) {
+    public LocalRemoteRepo(Context injector, File workingDirectory, Repository localRepository) {
         super(localRepository);
         this.injector = injector;
         this.workingDirectory = workingDirectory;
@@ -103,7 +104,11 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
         final Optional<Ref> currHead = remoteGeoGit.command(RefParse.class).setName(Ref.HEAD)
                 .call();
         Preconditions.checkState(currHead.isPresent(), "Remote repository has no HEAD.");
-        return currHead.get();
+        if (currHead.get().getObjectId().equals(ObjectId.NULL)) {
+            return null;
+        } else {
+            return currHead.get();
+        }
     }
 
     /**
@@ -118,6 +123,9 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
         Predicate<Ref> filter = new Predicate<Ref>() {
             @Override
             public boolean apply(Ref input) {
+                if (input.getObjectId().equals(ObjectId.NULL)) {
+                    return false;
+                }
                 boolean keep = false;
                 if (getHeads) {
                     keep = input.getName().startsWith(Ref.HEADS_PREFIX);
@@ -147,12 +155,12 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
         try {
             traverser.traverse(ref.getObjectId());
             while (!traverser.commits.isEmpty()) {
-                walkCommit(traverser.commits.pop(), true);
+                walkHead(traverser.commits.pop(), true);
             }
 
         } catch (Exception e) {
             for (ObjectId oid : touchedIds) {
-                localRepository.getObjectDatabase().delete(oid);
+                localRepository.objectDatabase().delete(oid);
             }
             Throwables.propagate(e);
         } finally {
@@ -170,6 +178,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
     @Override
     public void pushNewData(Ref ref, String refspec) throws SynchronizationException {
         Optional<Ref> remoteRef = remoteGeoGit.command(RefParse.class).setName(refspec).call();
+        remoteRef = remoteRef.or(remoteGeoGit.command(RefParse.class).setName(Ref.TAGS_PREFIX + refspec).call());
         checkPush(ref, remoteRef);
         touchedIds = new LinkedList<ObjectId>();
 
@@ -178,10 +187,13 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
         try {
             traverser.traverse(ref.getObjectId());
             while (!traverser.commits.isEmpty()) {
-                walkCommit(traverser.commits.pop(), false);
+                walkHead(traverser.commits.pop(), false);
             }
 
-            Ref updatedRef = remoteGeoGit.command(UpdateRef.class).setName(refspec)
+            String nameToSet =
+                remoteRef.isPresent() ? remoteRef.get().getName() : Ref.HEADS_PREFIX + refspec;
+
+            Ref updatedRef = remoteGeoGit.command(UpdateRef.class).setName(nameToSet)
                     .setNewValue(ref.getObjectId()).call().get();
 
             Ref remoteHead = headRef();
@@ -190,14 +202,13 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
                     remoteGeoGit.command(UpdateSymRef.class).setName(Ref.HEAD)
                             .setNewValue(ref.getName()).call();
                     RevCommit commit = remoteGeoGit.getRepository().getCommit(ref.getObjectId());
-                    remoteGeoGit.getRepository().getWorkingTree()
-                            .updateWorkHead(commit.getTreeId());
-                    remoteGeoGit.getRepository().getIndex().updateStageHead(commit.getTreeId());
+                    remoteGeoGit.getRepository().workingTree().updateWorkHead(commit.getTreeId());
+                    remoteGeoGit.getRepository().index().updateStageHead(commit.getTreeId());
                 }
             }
         } catch (Exception e) {
             for (ObjectId oid : touchedIds) {
-                remoteGeoGit.getRepository().getObjectDatabase().delete(oid);
+                remoteGeoGit.getRepository().objectDatabase().delete(oid);
             }
             Throwables.propagate(e);
         } finally {
@@ -216,30 +227,46 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
         remoteGeoGit.command(UpdateRef.class).setName(refspec).setDelete(true).call();
     }
 
-    protected void walkCommit(ObjectId commitId, boolean fetch) {
+    protected void walkHead(ObjectId headId, boolean fetch) {
         Repository from = localRepository;
         Repository to = remoteGeoGit.getRepository();
         if (fetch) {
-            from = to;
-            to = localRepository;
+            Repository tmp = to;
+            to = from;
+            from = tmp;
         }
         ObjectInserter objectInserter = to.newObjectInserter();
+        Optional<RevObject> object = from.command(RevObjectParse.class).setObjectId(headId).call();
 
+        if (object.isPresent()) {
+            if (object.get().getType().equals(TYPE.COMMIT)) {
+                RevCommit commit = (RevCommit) object.get();
+                walkTree(commit.getTreeId(), from, to, objectInserter);
+            } else if (object.get().getType().equals(TYPE.TAG)) {
+                RevTag tag = (RevTag) object.get();
+                walkCommit(tag.getCommitId(), from, to, objectInserter);
+            }
+            objectInserter.insert(object.get());
+            touchedIds.add(headId);
+        }
+    }
+
+    protected void walkCommit(ObjectId commitId, Repository from, Repository to, ObjectInserter objectInserter) {
         Optional<RevObject> object = from.command(RevObjectParse.class).setObjectId(commitId)
                 .call();
         if (object.isPresent() && object.get().getType().equals(TYPE.COMMIT)) {
-            RevCommit commit = (RevCommit) object.get();
-            walkTree(commit.getTreeId(), from, to, objectInserter);
+               RevCommit commit = (RevCommit) object.get();
+               walkTree(commit.getTreeId(), from, to, objectInserter);
 
-            objectInserter.insert(commit);
-            touchedIds.add(commitId);
+               objectInserter.insert(commit);
+               touchedIds.add(commitId);
         }
     }
 
     private void walkTree(ObjectId treeId, Repository from, Repository to,
             ObjectInserter objectInserter) {
         // See if we already have it
-        if (to.getObjectDatabase().exists(treeId)) {
+        if (to.objectDatabase().exists(treeId)) {
             return;
         }
 
@@ -271,7 +298,7 @@ class LocalRemoteRepo extends AbstractRemoteRepo {
     private void moveObject(ObjectId objectId, Repository from, Repository to,
             ObjectInserter objectInserter) {
         // See if we already have it
-        if (to.getObjectDatabase().exists(objectId)) {
+        if (to.objectDatabase().exists(objectId)) {
             return;
         }
 

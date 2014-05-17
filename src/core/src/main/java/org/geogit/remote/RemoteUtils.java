@@ -6,16 +6,20 @@
 package org.geogit.remote;
 
 import java.io.File;
+import java.net.Authenticator;
+import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLDecoder;
 
+import org.geogit.api.Context;
 import org.geogit.api.Remote;
 import org.geogit.repository.Repository;
 import org.geogit.storage.DeduplicationService;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
-import com.google.inject.Injector;
 
 /**
  * Provides utilities for creating interfaces to remote repositories.
@@ -31,7 +35,7 @@ public class RemoteUtils {
      * @return an {@link Optional} of the interface to the remote repository, or
      *         {@link Optional#absent()} if a connection to the remote could not be established.
      */
-    public static Optional<IRemoteRepo> newRemote(Injector injector, Remote remoteConfig,
+    public static Optional<IRemoteRepo> newRemote(Context injector, Remote remoteConfig,
             Repository localRepository, DeduplicationService deduplicationService) {
 
         try {
@@ -41,6 +45,7 @@ public class RemoteUtils {
             IRemoteRepo remoteRepo = null;
             if (protocol == null || protocol.equals("file")) {
                 String filepath = new URL(remoteConfig.getFetchURL()).getFile();
+                filepath = URLDecoder.decode(filepath, Charsets.UTF_8.displayName());
                 if (remoteConfig.getMapped()) {
                     remoteRepo = new LocalMappedRemoteRepo(injector, new File(filepath),
                             localRepository);
@@ -48,6 +53,18 @@ public class RemoteUtils {
                     remoteRepo = new LocalRemoteRepo(injector, new File(filepath), localRepository);
                 }
             } else if (protocol.equals("http")) {
+                final String username = remoteConfig.getUserName();
+                final String password = remoteConfig.getPassword();
+                if (username != null && password != null) {
+                    Authenticator.setDefault(new Authenticator() {
+                        protected PasswordAuthentication getPasswordAuthentication() {
+                            return new PasswordAuthentication(username, Remote.decryptPassword(
+                                    password).toCharArray());
+                        }
+                    });
+                } else {
+                    Authenticator.setDefault(null);
+                }
                 if (remoteConfig.getMapped()) {
                     remoteRepo = new HttpMappedRemoteRepo(fetchURI.toURL(), localRepository);
                 } else {

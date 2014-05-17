@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.geogit</groupId>
     <artifactId>storage</artifactId>
-    <version>0.8-SNAPSHOT</version>
+    <version>0.9-SNAPSHOT</version>
   </parent>
 
   <groupId>org.geogit</groupId>
@@ -26,12 +26,6 @@
       <version>2.11.3</version>
     </dependency>
     <dependency>
-      <groupId>com.boundlessgeo</groupId>
-      <artifactId>blongo</artifactId>
-      <version>0.1</version>
-    </dependency>
-                                    
-    <dependency>
       <!-- Google Common Libraries. Featuring com.google.collect collection classes -->
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
@@ -44,6 +38,7 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
+      <classifier>no_aop</classifier>
     </dependency>
     
     <!-- Test scope dependencies -->
@@ -57,6 +52,11 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tinkerpop.blueprints</groupId>
+      <artifactId>blueprints-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

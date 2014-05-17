@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.geogit</groupId>
     <artifactId>web</artifactId>
-    <version>0.8-SNAPSHOT</version>
+    <version>0.9-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -16,24 +16,19 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.restlet</groupId>
+      <artifactId>org.restlet</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.geogit</groupId>
       <artifactId>geogit-core</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geogit</groupId>
-      <artifactId>geogit-bdbje</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geogit</groupId>
-      <artifactId>geogit-blueprints</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jettison</groupId>
       <artifactId>jettison</artifactId>
     </dependency>
+    
   </dependencies>
 
 </project>

@@ -15,6 +15,7 @@ import java.util.List;
 
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
+import org.geogit.api.RevTag;
 import org.geogit.api.plumbing.RefParse;
 import org.geogit.api.porcelain.BranchCreateOp;
 import org.geogit.api.porcelain.BranchDeleteOp;
@@ -23,12 +24,15 @@ import org.geogit.api.porcelain.CloneOp;
 import org.geogit.api.porcelain.CommitOp;
 import org.geogit.api.porcelain.FetchOp;
 import org.geogit.api.porcelain.LogOp;
+import org.geogit.api.porcelain.TagCreateOp;
+import org.geogit.api.porcelain.TagListOp;
 import org.geogit.remote.RemoteRepositoryTestCase;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 
 public class FetchOpTest extends RemoteRepositoryTestCase {
     @Rule
@@ -74,11 +78,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
 
         // Make sure Branch1 has all of the commits
         Iterator<RevCommit> logs = remoteGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
-
+        List<RevCommit> logged = Lists.newArrayList(logs);
         assertEquals(expectedBranch, logged);
 
         // Checkout master and commit some changes
@@ -92,13 +92,15 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         commit = remoteGeogit.geogit.command(CommitOp.class).call();
         expectedMaster.addFirst(commit);
 
+        remoteGeogit.geogit.command(TagCreateOp.class) //
+            .setMessage("TestTag") //
+            .setCommitId(commit.getId()) //
+            .setName("test") //
+            .call();
+
         // Make sure master has all of the commits
         logs = remoteGeogit.geogit.command(LogOp.class).call();
-        logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
-
+        logged = Lists.newArrayList(logs);
         assertEquals(expectedMaster, logged);
     }
 
@@ -106,10 +108,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         // Make sure the local repository got all of the commits from master
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/master").call();
         Iterator<RevCommit> logs = localGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        List<RevCommit> logged = Lists.newArrayList(logs);
 
         assertEquals(expectedMaster, logged);
 
@@ -117,12 +116,11 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/Branch1")
                 .call();
         logs = localGeogit.geogit.command(LogOp.class).call();
-        logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
-
+        logged = Lists.newArrayList(logs);
         assertEquals(expectedBranch, logged);
+
+        List<RevTag> tags = localGeogit.geogit.command(TagListOp.class).call();
+        assertEquals(1, tags.size());
     }
 
     private void verifyPrune() throws Exception {
@@ -130,10 +128,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         localGeogit.geogit.command(CheckoutOp.class).setForce(true)
                 .setSource("refs/remotes/origin/master").call();
         Iterator<RevCommit> logs = localGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        List<RevCommit> logged = Lists.newArrayList(logs);
 
         assertEquals(expectedMaster, logged);
 
@@ -163,7 +158,8 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         // clone the repository
         CloneOp clone = clone();
         clone.setDepth(2);
-        clone.setRepositoryURL(remoteGeogit.envHome.getCanonicalPath()).call();
+        String repositoryURL = remoteGeogit.envHome.getCanonicalPath();
+        clone.setRepositoryURL(repositoryURL).call();
 
         FetchOp fetch = fetch();
         fetch.setDepth(3);
@@ -172,10 +168,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         // Make sure the local repository got all of the commits from master
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/master").call();
         Iterator<RevCommit> logs = localGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        List<RevCommit> logged = Lists.newArrayList(logs);
 
         assertEquals(3, logged.size());
 
@@ -187,10 +180,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/Branch1")
                 .call();
         logs = localGeogit.geogit.command(LogOp.class).call();
-        logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        logged = Lists.newArrayList(logs); 
 
         assertEquals(3, logged.size());
 
@@ -237,10 +227,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         // Make sure the local repository got all of the commits from master
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/master").call();
         Iterator<RevCommit> logs = localGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        List<RevCommit> logged = Lists.newArrayList(logs);
 
         assertEquals(3, logged.size());
 
@@ -281,10 +268,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
 
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/master").call();
         Iterator<RevCommit> logs = localGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        List<RevCommit> logged = Lists.newArrayList(logs);
 
         // Should have the previous 2 commits, plus all 4 new commits.
         assertEquals(6, logged.size());
@@ -314,10 +298,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
 
         // Make sure master has all of the commits
         Iterator<RevCommit> logs = remoteGeogit.geogit.command(LogOp.class).call();
-        List<RevCommit> logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        List<RevCommit> logged = Lists.newArrayList(logs);
 
         assertEquals(expectedMaster, logged);
 
@@ -341,10 +322,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
 
         // Make sure Branch1 has all of the commits
         logs = remoteGeogit.geogit.command(LogOp.class).call();
-        logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        logged = Lists.newArrayList(logs);
 
         assertEquals(expectedBranch, logged);
 
@@ -354,10 +332,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         // Make sure the local repository got all of the commits from master
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/master").call();
         logs = localGeogit.geogit.command(LogOp.class).call();
-        logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        logged = Lists.newArrayList(logs);
 
         assertEquals(2, logged.size());
 
@@ -368,10 +343,7 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
         localGeogit.geogit.command(CheckoutOp.class).setSource("refs/remotes/origin/Branch1")
                 .call();
         logs = localGeogit.geogit.command(LogOp.class).call();
-        logged = new ArrayList<RevCommit>();
-        for (; logs.hasNext();) {
-            logged.add(logs.next());
-        }
+        logged = Lists.newArrayList(logs);
 
         assertEquals(2, logged.size());
 
@@ -505,5 +477,4 @@ public class FetchOpTest extends RemoteRepositoryTestCase {
 
         assertTrue(missing.isPresent());
     }
-
 }

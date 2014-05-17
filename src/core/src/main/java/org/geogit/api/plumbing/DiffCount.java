@@ -16,25 +16,23 @@ import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
-import org.geogit.api.plumbing.diff.DiffCounter;
+import org.geogit.api.plumbing.diff.DiffCountConsumer;
 import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.plumbing.diff.DiffObjectCount;
+import org.geogit.api.plumbing.diff.DiffTreeVisitor;
 import org.geogit.api.plumbing.diff.DiffTreeWalk;
 import org.geogit.storage.StagingDatabase;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
-import com.google.inject.Inject;
 
 /**
  * A faster alternative to count the number of diffs between two trees than walking a
  * {@link DiffTreeWalk} iterator.
  * 
- * @see DiffCounter
+ * @see DiffCountConsumer
  */
 public class DiffCount extends AbstractGeoGitOp<DiffObjectCount> {
-
-    private StagingDatabase index;
 
     private final List<String> pathFilters = Lists.newLinkedList();
 
@@ -43,11 +41,6 @@ public class DiffCount extends AbstractGeoGitOp<DiffObjectCount> {
     private String newRefSpec;
 
     private boolean reportTrees;
-
-    @Inject
-    public DiffCount(StagingDatabase index) {
-        this.index = index;
-    }
 
     public DiffCount setOldVersion(@Nullable String refSpec) {
         this.oldRefSpec = refSpec;
@@ -83,7 +76,7 @@ public class DiffCount extends AbstractGeoGitOp<DiffObjectCount> {
     }
 
     @Override
-    public DiffObjectCount call() {
+    protected  DiffObjectCount _call() {
         checkState(oldRefSpec != null, "old ref spec not provided");
         checkState(newRefSpec != null, "new ref spec not provided");
 
@@ -91,8 +84,11 @@ public class DiffCount extends AbstractGeoGitOp<DiffObjectCount> {
         final RevTree newTree = getTree(newRefSpec);
 
         DiffObjectCount diffCount;
+        StagingDatabase index = stagingDatabase();
         if (pathFilters.isEmpty()) {
-            DiffCounter counter = new DiffCounter(index, oldTree, newTree);
+            DiffTreeVisitor visitor = new DiffTreeVisitor(oldTree, newTree, index, index);
+            DiffCountConsumer counter = new DiffCountConsumer(index);
+            visitor.walk(counter);
             diffCount = counter.get();
         } else {
             DiffTreeWalk treeWalk = new DiffTreeWalk(index, oldTree, newTree);

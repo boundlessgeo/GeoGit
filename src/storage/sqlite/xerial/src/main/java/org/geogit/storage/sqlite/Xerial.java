@@ -10,12 +10,14 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
+import org.geogit.api.Context;
 import org.geogit.di.GeogitModule;
 import org.slf4j.Logger;
+import org.sqlite.SQLiteConfig.SynchronousMode;
 import org.sqlite.SQLiteDataSource;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.util.Modules;
 
 /**
@@ -25,6 +27,22 @@ import com.google.inject.util.Modules;
  * 
  */
 public class Xerial {
+
+    /**
+     * Default synchronization setting, see {@link #turnSynchronizationOff()}
+     */
+    private static SynchronousMode DEFAULT_SYNC_MODE = SynchronousMode.NORMAL;
+
+    /**
+     * Turns SQLite synchronization off.
+     * <p>
+     * Hack put in place only for testing, never set this for production use.
+     * </p>
+     */
+    @VisibleForTesting
+    public static void turnSynchronizationOff() {
+        DEFAULT_SYNC_MODE = SynchronousMode.OFF;
+    }
 
     /**
      * Logs a (prepared) sql statement.
@@ -53,14 +71,15 @@ public class Xerial {
     /**
      * Creates the injector to enable xerial sqlite storage.
      */
-    public static Injector injector() {
+    public static Context injector() {
         return Guice.createInjector(Modules.override(new GeogitModule()).with(
-                new XerialSQLiteModule()));
+                new XerialSQLiteModule())).getInstance(Context.class);
     }
 
     public static SQLiteDataSource newDataSource(File db) {
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl("jdbc:sqlite:" + db.getAbsolutePath());
+        dataSource.setSynchronous(DEFAULT_SYNC_MODE.getValue());
         return dataSource;
     }
 

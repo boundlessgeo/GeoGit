@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.geogit.api.CommitBuilder;
 import org.geogit.api.GeoGIT;
+import org.geogit.api.Context;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
@@ -19,6 +20,8 @@ import org.geogit.api.RevObject;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
 import org.geogit.api.SymRef;
+import org.geogit.api.plumbing.CheckSparsePath;
+import org.geogit.api.plumbing.FindCommonAncestor;
 import org.geogit.api.plumbing.ForEachRef;
 import org.geogit.api.plumbing.RefParse;
 import org.geogit.api.plumbing.ResolveTreeish;
@@ -35,7 +38,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
-import com.google.inject.Injector;
 
 /**
  * An implementation of a remote repository that exists on the local machine.
@@ -46,7 +48,7 @@ public class LocalMappedRemoteRepo extends AbstractMappedRemoteRepo {
 
     private GeoGIT remoteGeoGit;
 
-    private Injector injector;
+    private Context injector;
 
     private File workingDirectory;
 
@@ -56,7 +58,7 @@ public class LocalMappedRemoteRepo extends AbstractMappedRemoteRepo {
      * @param injector the Guice injector for the new repository
      * @param workingDirectory the directory of the remote repository
      */
-    public LocalMappedRemoteRepo(Injector injector, File workingDirectory,
+    public LocalMappedRemoteRepo(Context injector, File workingDirectory,
             Repository localRepository) {
         super(localRepository);
         this.injector = injector;
@@ -137,8 +139,8 @@ public class LocalMappedRemoteRepo extends AbstractMappedRemoteRepo {
         for (Ref remoteRef : remoteRefs) {
             Ref newRef = remoteRef;
             if (!(newRef instanceof SymRef)
-                    && localRepository.getGraphDatabase().exists(remoteRef.getObjectId())) {
-                ObjectId mappedCommit = localRepository.getGraphDatabase().getMapping(
+                    && localRepository.graphDatabase().exists(remoteRef.getObjectId())) {
+                ObjectId mappedCommit = localRepository.graphDatabase().getMapping(
                         remoteRef.getObjectId());
                 if (mappedCommit != null) {
                     newRef = new Ref(remoteRef.getName(), mappedCommit);
@@ -189,8 +191,8 @@ public class LocalMappedRemoteRepo extends AbstractMappedRemoteRepo {
                 remoteGeoGit.command(UpdateSymRef.class).setName(Ref.HEAD)
                         .setNewValue(updatedRef.getName()).call();
                 RevCommit commit = remoteGeoGit.getRepository().getCommit(commitId);
-                remoteGeoGit.getRepository().getWorkingTree().updateWorkHead(commit.getTreeId());
-                remoteGeoGit.getRepository().getIndex().updateStageHead(commit.getTreeId());
+                remoteGeoGit.getRepository().workingTree().updateWorkHead(commit.getTreeId());
+                remoteGeoGit.getRepository().index().updateStageHead(commit.getTreeId());
             }
         }
         return updatedRef;
@@ -216,22 +218,23 @@ public class LocalMappedRemoteRepo extends AbstractMappedRemoteRepo {
             for (int i = 0; i < commit.getParentIds().size(); i++) {
                 ObjectId parentId = commit.getParentIds().get(i);
                 if (i != 0) {
-                    Optional<ObjectId> commonAncestor = from.getGraphDatabase()
-                            .findLowestCommonAncestor(commit.getParentIds().get(0), parentId);
+                    Optional<ObjectId> commonAncestor = from.command(FindCommonAncestor.class)
+                            .setLeftId(commit.getParentIds().get(0)).setRightId(parentId).call();
                     if (commonAncestor.isPresent()) {
-                        if (from.getGraphDatabase().isSparsePath(parentId, commonAncestor.get())) {
+                        if (from.command(CheckSparsePath.class).setStart(parentId)
+                                .setEnd(commonAncestor.get()).call()) {
                             // This should be the base commit to preserve the sparse changes that
                             // were filtered
                             // out.
-                            newParents.add(0, from.getGraphDatabase().getMapping(parentId));
+                            newParents.add(0, from.graphDatabase().getMapping(parentId));
                             continue;
                         }
                     }
                 }
-                newParents.add(from.getGraphDatabase().getMapping(parentId));
+                newParents.add(from.graphDatabase().getMapping(parentId));
             }
             if (newParents.size() > 0) {
-                parent = from.getGraphDatabase().getMapping(newParents.get(0));
+                parent = from.graphDatabase().getMapping(newParents.get(0));
             }
             Iterator<DiffEntry> diffIter = from.command(DiffOp.class).setNewVersion(commitId)
                     .setOldVersion(parent).setReportTrees(true).call();
@@ -260,10 +263,10 @@ public class LocalMappedRemoteRepo extends AbstractMappedRemoteRepo {
             builder.setTreeId(newTreeId);
 
             RevCommit mapped = builder.build();
-            to.getObjectDatabase().put(mapped);
+            to.objectDatabase().put(mapped);
 
-            from.getGraphDatabase().map(commit.getId(), mapped.getId());
-            from.getGraphDatabase().map(mapped.getId(), commit.getId());
+            from.graphDatabase().map(commit.getId(), mapped.getId());
+            from.graphDatabase().map(mapped.getId(), commit.getId());
 
         }
     }

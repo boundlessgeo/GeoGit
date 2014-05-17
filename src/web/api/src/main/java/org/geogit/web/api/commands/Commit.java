@@ -8,7 +8,7 @@ import java.util.Iterator;
 
 import javax.annotation.Nullable;
 
-import org.geogit.api.CommandLocator;
+import org.geogit.api.Context;
 import org.geogit.api.ObjectId;
 import org.geogit.api.RevCommit;
 import org.geogit.api.plumbing.diff.DiffEntry;
@@ -82,7 +82,7 @@ public class Commit extends AbstractWebAPICommand {
             throw new CommandSpecException(
                     "No transaction was specified, commit requires a transaction to preserve the stability of the repository.");
         }
-        final CommandLocator geogit = this.getCommandLocator(context);
+        final Context geogit = this.getCommandLocator(context);
         RevCommit commit;
         try {
             commit = geogit.command(CommitOp.class)
@@ -97,6 +97,7 @@ public class Commit extends AbstractWebAPICommand {
             commit = null;
         }
         if (commit != null) {
+            final RevCommit commitToWrite = commit;
             final ObjectId parentId = commit.parentN(0).or(ObjectId.NULL);
             final Iterator<DiffEntry> diff = geogit.command(DiffOp.class).setOldVersion(parentId)
                     .setNewVersion(commit.getId()).call();
@@ -105,7 +106,7 @@ public class Commit extends AbstractWebAPICommand {
                 @Override
                 public void write(ResponseWriter out) throws Exception {
                     out.start();
-                    out.writeCommitResponse(diff);
+                    out.writeCommitResponse(commitToWrite, diff);
                     out.finish();
                 }
             });

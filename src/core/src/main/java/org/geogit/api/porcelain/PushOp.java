@@ -9,12 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.GlobalInjectorBuilder;
+import org.geogit.api.GlobalContextBuilder;
 import org.geogit.api.Ref;
 import org.geogit.api.Remote;
 import org.geogit.api.SymRef;
 import org.geogit.api.plumbing.ForEachRef;
 import org.geogit.api.plumbing.RefParse;
+import org.geogit.api.porcelain.SynchronizationException.StatusCode;
 import org.geogit.remote.IRemoteRepo;
 import org.geogit.remote.RemoteUtils;
 import org.geogit.repository.Hints;
@@ -26,7 +27,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
-import com.google.inject.Inject;
 
 /**
  * Update remote refs along with associated objects.
@@ -36,28 +36,13 @@ import com.google.inject.Inject;
  * conflicting changes when pushing a branch that has non conflicting changes at both sides. This
  * needs to be revisited once we get more merge tools.
  */
-public class PushOp extends AbstractGeoGitOp<Void> {
+public class PushOp extends AbstractGeoGitOp<Boolean> {
 
     private boolean all;
 
     private List<String> refSpecs = new ArrayList<String>();
 
     private Supplier<Optional<Remote>> remote;
-
-    private Repository localRepository;
-
-    private final DeduplicationService deduplicationService;
-
-    /**
-     * Constructs a new {@code PushOp} with the provided parameters.
-     * 
-     * @param localRepository the local geogit repository
-     */
-    @Inject
-    public PushOp(final Repository localRepository, final DeduplicationService deduplicationService) {
-        this.localRepository = localRepository;
-        this.deduplicationService = deduplicationService;
-    }
 
     /**
      * @param all if {@code true}, push all refs under refs/heads/
@@ -104,7 +89,7 @@ public class PushOp extends AbstractGeoGitOp<Void> {
      * @see org.geogit.api.AbstractGeoGitOp#call()
      */
     @Override
-    public Void call() {
+    protected Boolean _call() {
         if (remote == null) {
             setRemote("origin");
         }
@@ -123,6 +108,7 @@ public class PushOp extends AbstractGeoGitOp<Void> {
             Throwables.propagate(e);
         }
 
+        boolean dataPushed = false;
         try {
             if (refSpecs.size() > 0) {
                 for (String refspec : refSpecs) {
@@ -165,7 +151,14 @@ public class PushOp extends AbstractGeoGitOp<Void> {
                         Preconditions.checkArgument(localRef.isPresent(),
                                 "Local ref could not be resolved.");
                         // push the localref branch to the remoteref branch
-                        remoteRepo.get().pushNewData(localRef.get(), remoterefspec);
+                        try {
+                            remoteRepo.get().pushNewData(localRef.get(), remoterefspec);
+                            dataPushed = true;
+                        } catch (SynchronizationException e) {
+                            if (e.statusCode != StatusCode.NOTHING_TO_PUSH) {
+                                Throwables.propagate(e);
+                            }
+                        }
                     }
 
                 }
@@ -196,7 +189,14 @@ public class PushOp extends AbstractGeoGitOp<Void> {
                 }
 
                 for (Ref ref : refsToPush) {
-                    remoteRepo.get().pushNewData(ref);
+                    try {
+                        remoteRepo.get().pushNewData(ref);
+                        dataPushed = true;
+                    } catch (SynchronizationException e) {
+                        if (e.statusCode != StatusCode.NOTHING_TO_PUSH) {
+                            Throwables.propagate(e);
+                        }
+                    }
                 }
             }
 
@@ -210,7 +210,7 @@ public class PushOp extends AbstractGeoGitOp<Void> {
             }
         }
 
-        return null;
+        return dataPushed;
     }
 
     /**
@@ -220,7 +220,9 @@ public class PushOp extends AbstractGeoGitOp<Void> {
     public Optional<IRemoteRepo> getRemoteRepo(Remote remote) {
         Hints remoteHints = new Hints();
         remoteHints.set(Hints.REMOTES_READ_ONLY, Boolean.FALSE);
-        return RemoteUtils.newRemote(GlobalInjectorBuilder.builder.build(remoteHints), remote,
+        Repository localRepository = repository();
+        DeduplicationService deduplicationService = context.deduplicationService();
+        return RemoteUtils.newRemote(GlobalContextBuilder.builder.build(remoteHints), remote,
                 localRepository, deduplicationService);
     }
 }

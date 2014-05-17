@@ -40,7 +40,7 @@ import org.geogit.storage.BulkOpListener;
 import org.geogit.storage.ConfigDatabase;
 import org.geogit.storage.ObjectDatabase;
 import org.geogit.storage.ObjectReader;
-import org.geogit.storage.ObjectSerializingFactory;
+import org.geogit.storage.datastream.DataStreamSerializationFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +75,9 @@ import com.sleepycat.je.TransactionConfig;
  */
 public class JEObjectDatabase extends AbstractObjectDatabase implements ObjectDatabase {
 
+    /** Name of the BDB JE Environment inside the .geogit folder used for the objects database */
+    static final String ENVIRONMENT_NAME = "objects";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(JEObjectDatabase.class);
 
     private static final int SYNC_BYTES_LIMIT = 512 * 1024 * 1024;
@@ -95,6 +98,8 @@ public class JEObjectDatabase extends AbstractObjectDatabase implements ObjectDa
 
     private static final String BULK_PARTITIONING_CONFIG_KEY = "bdbje.bulkpartition";
 
+    private static final String OBJECT_DURABILITY_CONFIG_KEY = "bdbje.object_durability";
+
     private EnvironmentBuilder envProvider;
 
     /**
@@ -111,17 +116,15 @@ public class JEObjectDatabase extends AbstractObjectDatabase implements ObjectDa
     private final String envName;
 
     @Inject
-    public JEObjectDatabase(final ConfigDatabase configDB,
-            final ObjectSerializingFactory serialFactory, final EnvironmentBuilder envProvider,
+    public JEObjectDatabase(final ConfigDatabase configDB, final EnvironmentBuilder envProvider,
             final Hints hints) {
-        this(configDB, serialFactory, envProvider, hints.getBoolean(Hints.OBJECTS_READ_ONLY),
-                "objects");
+        this(configDB, envProvider, hints.getBoolean(Hints.OBJECTS_READ_ONLY),
+                JEObjectDatabase.ENVIRONMENT_NAME);
     }
 
-    public JEObjectDatabase(final ConfigDatabase configDB,
-            final ObjectSerializingFactory serialFactory, final EnvironmentBuilder envProvider,
+    public JEObjectDatabase(final ConfigDatabase configDB, final EnvironmentBuilder envProvider,
             final boolean readOnly, final String envName) {
-        super(serialFactory);
+        super(DataStreamSerializationFactory.INSTANCE);
         this.configDB = configDB;
         this.envProvider = envProvider;
         this.readOnly = readOnly;
@@ -225,7 +228,7 @@ public class JEObjectDatabase extends AbstractObjectDatabase implements ObjectDa
                     environment = createEnvironment(false);
                 } catch (EnvironmentLockedException e) {
                     throw new IllegalStateException(String.format(
-                            "Environment open readonly but databse %s does not exist.",
+                            "Environment open readonly but database %s does not exist.",
                             databaseName));
                 }
             }
@@ -846,7 +849,15 @@ public class JEObjectDatabase extends AbstractObjectDatabase implements ObjectDa
         if (transactional) {
             TransactionConfig txConfig = new TransactionConfig();
             txConfig.setReadUncommitted(true);
-            txConfig.setDurability(Durability.COMMIT_WRITE_NO_SYNC);
+            Optional<String> durability = configDB.get(OBJECT_DURABILITY_CONFIG_KEY);
+            if (!durability.isPresent()) {
+                durability = configDB.getGlobal(OBJECT_DURABILITY_CONFIG_KEY);
+            }
+            if ("safe".equals(durability.orNull())) {
+                txConfig.setDurability(Durability.COMMIT_SYNC);
+            } else {
+                txConfig.setDurability(Durability.COMMIT_WRITE_NO_SYNC);
+            }
             Transaction transaction = env.beginTransaction(null, txConfig);
             return transaction;
         }

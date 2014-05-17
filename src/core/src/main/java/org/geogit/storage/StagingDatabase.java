@@ -9,6 +9,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import org.geogit.api.plumbing.merge.Conflict;
+import org.geogit.di.Singleton;
 
 import com.google.common.base.Optional;
 
@@ -16,7 +17,17 @@ import com.google.common.base.Optional;
  * Provides an interface for GeoGit staging databases.
  * 
  */
+@Singleton
 public interface StagingDatabase extends ObjectDatabase {
+
+    /**
+     * Checks whether there are conflicts for the given transaction namesapce.
+     * 
+     * @param namespace the namespace of the conflict
+     * @return {@code true} if there are conflicts in the provided transaction namespace,
+     *         {@code false} otherwise
+     */
+    public boolean hasConflicts(@Nullable String namespace);
 
     /**
      * Gets the specified conflict from the database.

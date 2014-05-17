@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 import org.geogit.storage.FieldType;
 import org.geogit.storage.text.TextValueSerializer;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
@@ -30,7 +32,6 @@ import com.google.gson.annotations.Expose;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 
@@ -111,6 +112,7 @@ public class MappingRule {
      * this rule, even if it meets the conditions set by the 'filter' object
      */
     @Expose
+    @Nullable
     private Map<String, List<String>> exclude;
 
     /**
@@ -123,6 +125,7 @@ public class MappingRule {
      * The default fields to include in the destination feature type without transforming them
      */
     @Expose
+    @Nullable
     private List<DefaultField> defaultFields;
 
     private SimpleFeatureType featureType;
@@ -135,9 +138,11 @@ public class MappingRule {
 
     private static GeometryFactory gf = new GeometryFactory();
 
-    public MappingRule(String name, Map<String, List<String>> filter,
-            Map<String, List<String>> filterExclude, Map<String, AttributeDefinition> fields,
-            List<DefaultField> defaultFields) {
+    public MappingRule(final String name, final Map<String, List<String>> filter,
+            @Nullable final Map<String, List<String>> filterExclude,
+            final Map<String, AttributeDefinition> fields,
+            @Nullable final List<DefaultField> defaultFields) {
+
         Preconditions.checkNotNull(name);
         Preconditions.checkNotNull(filter);
         Preconditions.checkNotNull(fields);
@@ -240,6 +245,9 @@ public class MappingRule {
             if (Geometry.class.isAssignableFrom(clazz)) {
                 Geometry geom = prepareGeometry((Geometry) feature.getDefaultGeometryProperty()
                         .getValue());
+                if (geom == null) {
+                    return Optional.absent();
+                }
                 featureBuilder.set(attrName, geom);
             } else {
                 Object value = null;
@@ -279,14 +287,13 @@ public class MappingRule {
                 newCoords[coords.length] = coords[0];
                 coords = newCoords;
             }
-            return gf.createPolygon(coords);
-        } else {
-            if (geometryType.equals(LineString.class)) {
-
+            if (coords.length < 4) {
+                return null;
             }
-            return geom;
+            return gf.createPolygon(coords);
         }
 
+        return geom;
     }
 
     private Object getAttributeValue(String value, FieldType type) {

@@ -21,6 +21,7 @@ import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
 import org.geogit.api.SymRef;
 import org.geogit.api.plumbing.CatObject;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.api.plumbing.DiffTree;
 import org.geogit.api.plumbing.FindCommonAncestor;
 import org.geogit.api.plumbing.RefParse;
@@ -47,7 +48,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.io.Files;
-import com.google.inject.Inject;
 
 /**
  * 
@@ -72,15 +72,12 @@ import com.google.inject.Inject;
  * 
  */
 @CanRunDuringConflict
+@Hookable(name = "rebase")
 public class RebaseOp extends AbstractGeoGitOp<Boolean> {
 
     private Supplier<ObjectId> upstream;
 
     private Supplier<ObjectId> onto;
-
-    private Repository repository;
-
-    private Platform platform;
 
     private boolean skip;
 
@@ -93,18 +90,6 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
     private boolean abort;
 
     private String squashMessage;
-
-    /**
-     * Constructs a new {@code RebaseOp} using the specified parameters.
-     * 
-     * @param repository the repository to use
-     * @param platform the platform to use
-     */
-    @Inject
-    public RebaseOp(Repository repository, Platform platform) {
-        this.repository = repository;
-        this.platform = platform;
-    }
 
     /**
      * Sets the commit to replay commits onto.
@@ -179,7 +164,7 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
      * @return always {@code true}
      */
     @Override
-    public Boolean call() {
+    protected Boolean _call() {
 
         final Optional<Ref> currHead = command(RefParse.class).setName(Ref.HEAD).call();
         Preconditions.checkState(currHead.isPresent(), "Repository has no HEAD, can't rebase.");
@@ -262,31 +247,32 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
                 // Fast-forward
                 command(UpdateRef.class).setName(currentBranch).setNewValue(upstream.get()).call();
                 command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(currentBranch).call();
-                getWorkTree().updateWorkHead(upstream.get());
-                getIndex().updateStageHead(upstream.get());
+                workingTree().updateWorkHead(upstream.get());
+                index().updateStageHead(upstream.get());
                 getProgressListener().complete();
                 return true;
             }
 
+            Repository repository = repository();
             final RevCommit headCommit = repository.getCommit(headRef.getObjectId());
             final RevCommit targetCommit = repository.getCommit(upstream.get());
 
             command(UpdateRef.class).setName(Ref.ORIG_HEAD).setNewValue(headCommit.getId());
 
-            Optional<RevCommit> ancestorCommit = command(FindCommonAncestor.class)
+            Optional<ObjectId> ancestorCommit = command(FindCommonAncestor.class)
                     .setLeft(headCommit).setRight(targetCommit)
                     .setProgressListener(subProgress(10.f)).call();
 
             Preconditions.checkState(ancestorCommit.isPresent(),
                     "No ancestor commit could be found.");
 
-            if (ancestorCommit.get().getId().equals(headCommit.getId())) {
+            if (ancestorCommit.get().equals(headCommit.getId())) {
                 // Fast-forward
                 command(UpdateRef.class).setName(currentBranch).setNewValue(upstream.get()).call();
                 command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(currentBranch).call();
 
-                getWorkTree().updateWorkHead(upstream.get());
-                getIndex().updateStageHead(upstream.get());
+                workingTree().updateWorkHead(upstream.get());
+                index().updateStageHead(upstream.get());
                 getProgressListener().complete();
                 return true;
             }
@@ -297,7 +283,7 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
             List<RevCommit> commitsToRebase = new ArrayList<RevCommit>();
 
             RevCommit commit = commitIterator.next();
-            while (!commit.getId().equals(ancestorCommit.get().getId())) {
+            while (!commit.getId().equals(ancestorCommit.get())) {
                 commitsToRebase.add(commit);
                 commit = commitIterator.next();
             }
@@ -312,7 +298,7 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
 
             if (squashMessage != null) {
                 CommitBuilder builder = new CommitBuilder(commitsToRebase.get(0));
-                builder.setParentIds(Arrays.asList(ancestorCommit.get().getId()));
+                builder.setParentIds(Arrays.asList(ancestorCommit.get()));
                 builder.setMessage(squashMessage);
                 squashCommit = builder.build();
                 // save the commit, since it does not exist in the database, and might be needed if
@@ -409,7 +395,7 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
             File commitFile = new File(rebaseFolder, idx);
             if (commitFile.exists()) {
                 String commitId = Files.readFirstLine(commitFile, Charsets.UTF_8);
-                RevCommit commit = repository.getCommit(ObjectId.valueOf(commitId));
+                RevCommit commit = repository().getCommit(ObjectId.valueOf(commitId));
                 applyCommit(commit, useCommitChanges);
                 commitFile.delete();
                 int newIdx = Integer.parseInt(idx) + 1;
@@ -434,6 +420,8 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
      */
     private void applyCommit(RevCommit commitToApply, boolean useCommitChanges) {
 
+        Repository repository = repository();
+        Platform platform = platform();
         if (useCommitChanges) {
             ObjectId parentTreeId;
             ObjectId parentCommitId = ObjectId.NULL;
@@ -453,7 +441,7 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
                     commitToApply).call();
             if (report.getConflicts().isEmpty()) {
                 // stage changes
-                getIndex().stage(getProgressListener(), diff, 0);
+                index().stage(getProgressListener(), diff, 0);
 
                 // write new tree
                 ObjectId newTreeId = command(WriteTree.class).call();
@@ -467,21 +455,21 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
                 builder.setCommitterTimeZoneOffset(platform.timeZoneOffset(timestamp));
 
                 RevCommit newCommit = builder.build();
-                repository.getObjectDatabase().put(newCommit);
+                repository.objectDatabase().put(newCommit);
 
                 rebaseHead = newCommit.getId();
 
                 command(UpdateRef.class).setName(currentBranch).setNewValue(rebaseHead).call();
                 command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(currentBranch).call();
 
-                getWorkTree().updateWorkHead(newTreeId);
-                getIndex().updateStageHead(newTreeId);
+                workingTree().updateWorkHead(newTreeId);
+                index().updateStageHead(newTreeId);
 
             } else {
                 Iterator<DiffEntry> unconflicted = report.getUnconflicted().iterator();
                 // stage unconflicted changes
-                getIndex().stage(getProgressListener(), unconflicted, 0);
-                getWorkTree().updateWorkHead(getIndex().getTree().getId());
+                index().stage(getProgressListener(), unconflicted, 0);
+                workingTree().updateWorkHead(index().getTree().getId());
 
                 // mark conflicted elements
                 command(ConflictsWriteOp.class).setConflicts(report.getConflicts()).call();
@@ -519,15 +507,15 @@ public class RebaseOp extends AbstractGeoGitOp<Boolean> {
             builder.setCommitterTimeZoneOffset(platform.timeZoneOffset(timestamp));
 
             RevCommit newCommit = builder.build();
-            repository.getObjectDatabase().put(newCommit);
+            repository.objectDatabase().put(newCommit);
 
             rebaseHead = newCommit.getId();
 
             command(UpdateRef.class).setName(currentBranch).setNewValue(rebaseHead).call();
             command(UpdateSymRef.class).setName(Ref.HEAD).setNewValue(currentBranch).call();
 
-            getWorkTree().updateWorkHead(newTreeId);
-            getIndex().updateStageHead(newTreeId);
+            workingTree().updateWorkHead(newTreeId);
+            index().updateStageHead(newTreeId);
         }
 
     }

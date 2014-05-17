@@ -26,12 +26,6 @@ public class BranchDeleteOp extends AbstractGeoGitOp<Optional<? extends Ref>> {
     private String branchName;
 
     /**
-     * Constructs a new {@code BranchDeleteOp}.
-     */
-    public BranchDeleteOp() {
-    }
-
-    /**
      * @param branchName the name of the branch to delete, in a form {@link RefParse} understands.
      *        Must resolve to a branch reference.
      * @return {@code this}
@@ -50,7 +44,7 @@ public class BranchDeleteOp extends AbstractGeoGitOp<Optional<? extends Ref>> {
      *         {@link Ref#REMOTES_PREFIX remotes} namespace)
      */
     @Override
-    public Optional<? extends Ref> call() {
+    protected  Optional<? extends Ref> _call() {
         checkState(branchName != null, "Branch name not provided");
         Optional<Ref> branchRef = command(RefParse.class).setName(branchName).call();
         if (branchRef.isPresent()) {

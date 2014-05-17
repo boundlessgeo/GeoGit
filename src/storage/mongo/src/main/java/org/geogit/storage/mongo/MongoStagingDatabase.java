@@ -13,7 +13,7 @@ import org.geogit.api.ObjectId;
 import org.geogit.api.plumbing.merge.Conflict;
 import org.geogit.repository.RepositoryConnectionException;
 import org.geogit.storage.ConfigDatabase;
-import org.geogit.storage.ForwardingStagingDatabase;
+import org.geogit.storage.AbstractStagingDatabase;
 import org.geogit.storage.ObjectDatabase;
 import org.geogit.storage.StagingDatabase;
 
@@ -28,7 +28,7 @@ import com.mongodb.DBObject;
 /**
  * A staging database that uses a MongoDB server for persistence.
  */
-public class MongoStagingDatabase extends ForwardingStagingDatabase implements StagingDatabase {
+public class MongoStagingDatabase extends AbstractStagingDatabase implements StagingDatabase {
 
     protected DBCollection conflicts;
 
@@ -71,6 +71,18 @@ public class MongoStagingDatabase extends ForwardingStagingDatabase implements S
             ObjectId theirs = ObjectId.valueOf((String) result.get("theirs"));
             return Optional.of(new Conflict(path, ancestor, ours, theirs));
         }
+    }
+
+    @Override
+    public boolean hasConflicts(String namespace) {
+        DBObject query = new BasicDBObject();
+        if (namespace == null) {
+            query.put("namespace", 0);
+        } else {
+            query.put("namespace", namespace);
+        }
+        long count = conflicts.count(query);
+        return count > 0;
     }
 
     @Override

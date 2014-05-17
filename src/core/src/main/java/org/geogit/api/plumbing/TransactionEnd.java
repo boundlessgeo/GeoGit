@@ -13,8 +13,8 @@ import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.GeogitTransaction;
 import org.geogit.api.Ref;
 import org.geogit.api.SymRef;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.api.porcelain.CheckoutOp;
-import org.geogit.api.porcelain.MergeConflictsException;
 import org.geogit.api.porcelain.MergeOp;
 import org.geogit.api.porcelain.NothingToCommitException;
 import org.geogit.api.porcelain.RebaseConflictsException;
@@ -25,7 +25,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Suppliers;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
-import com.google.inject.Inject;
 
 /**
  * Finishes a {@link GeogitTransaction} by merging all refs that have been changed.
@@ -38,6 +37,7 @@ import com.google.inject.Inject;
  * 
  * @see GeogitTransaction
  */
+@Hookable(name = "transaction-end")
 public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
 
     private boolean cancel = false;
@@ -49,10 +49,6 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
     private Optional<String> authorName = Optional.absent();
 
     private Optional<String> authorEmail = Optional.absent();
-
-    @Inject
-    public TransactionEnd() {
-    }
 
     /**
      * @param cancel if {@code true}, the transaction will be cancelled, otherwise it will be
@@ -100,8 +96,8 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
      * @return Boolean - true if the transaction was successfully closed
      */
     @Override
-    public Boolean call() {
-        Preconditions.checkState(!(commandLocator instanceof GeogitTransaction),
+    protected Boolean _call() {
+        Preconditions.checkState(!(context instanceof GeogitTransaction),
                 "Cannot end a transaction within a transaction!");
         Preconditions.checkArgument(transaction != null, "No transaction was specified!");
 
@@ -117,7 +113,7 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
             ImmutableSet<Ref> changedRefs = getChangedRefs();
             // Lock the repository
             try {
-                getRefDatabase().lock();
+                refDatabase().lock();
             } catch (TimeoutException e) {
                 Throwables.propagate(e);
             }
@@ -181,7 +177,7 @@ public class TransactionEnd extends AbstractGeoGitOp<Boolean> {
                 // a transaction is committed?
             } finally {
                 // Unlock the repository
-                getRefDatabase().unlock();
+                refDatabase().unlock();
             }
 
         }

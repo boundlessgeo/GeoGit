@@ -12,7 +12,6 @@ import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.di.CanRunDuringConflict;
 
 import com.google.common.base.Throwables;
-import com.google.inject.Inject;
 
 /**
  * Retrieves GeoGit version information.
@@ -22,19 +21,12 @@ import com.google.inject.Inject;
 public class VersionOp extends AbstractGeoGitOp<VersionInfo> {
 
     /**
-     * Constructs a new {@code VersionOp}.
-     */
-    @Inject
-    public VersionOp() {
-    }
-
-    /**
      * Executes the Version operation.
      * 
      * @return the version info of the current build
      * @see org.geogit.api.AbstractGeoGitOp#call()
      */
-    public VersionInfo call() {
+    protected VersionInfo _call() {
         Properties properties = new Properties();
         VersionInfo info = null;
         try {

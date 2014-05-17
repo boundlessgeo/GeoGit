@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.geogit</groupId>
     <artifactId>geogit</artifactId>
-    <version>0.8-SNAPSHOT</version>
+    <version>0.9-SNAPSHOT</version>
     <relativePath>../parent/pom.xml</relativePath>
   </parent>
 
@@ -28,11 +28,6 @@
     <dependency>
       <groupId>org.geogit</groupId>
       <artifactId>geogit-blueprints</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geogit</groupId>
-      <artifactId>geogit-neo4j</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -97,6 +92,7 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
+      <classifier>no_aop</classifier>
     </dependency>
     
 	<dependency>

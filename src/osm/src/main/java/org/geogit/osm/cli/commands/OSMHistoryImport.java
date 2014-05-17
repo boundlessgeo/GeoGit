@@ -27,10 +27,12 @@ import javax.management.relation.Relation;
 
 import jline.console.ConsoleReader;
 
+import org.geogit.api.DefaultProgressListener;
 import org.geogit.api.FeatureBuilder;
 import org.geogit.api.GeoGIT;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.ProgressListener;
 import org.geogit.api.Ref;
 import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureType;
@@ -59,12 +61,10 @@ import org.geogit.repository.WorkingTree;
 import org.geotools.data.DataUtilities;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.referencing.CRS;
-import org.geotools.util.NullProgressListener;
 import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opengis.util.ProgressListener;
 
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
@@ -236,9 +236,7 @@ public class OSMHistoryImport extends AbstractCommand implements CLICommand {
         command.setAuthorTimestamp(changeset.getClosed());
         command.setAuthorTimeZoneOffset(0);// osm timestamps are in GMT
         ProgressListener listener = cli.getProgressListener();
-        listener.dispose();
-        listener.setCanceled(false);
-        listener.progress(0f);
+        listener.setProgress(0f);
         listener.started();
         command.setProgressListener(listener);
         try {
@@ -312,7 +310,7 @@ public class OSMHistoryImport extends AbstractCommand implements CLICommand {
         }
         final GeoGIT geogit = cli.getGeogit();
         final Repository repository = geogit.getRepository();
-        final WorkingTree workTree = repository.getWorkingTree();
+        final WorkingTree workTree = repository.workingTree();
 
         Map<Long, Coordinate> thisChangePointCache = new LinkedHashMap<Long, Coordinate>() {
             /** serialVersionUID */
@@ -360,7 +358,7 @@ public class OSMHistoryImport extends AbstractCommand implements CLICommand {
             }
 
             Iterator<? extends Feature> iterator = features.iterator();
-            ProgressListener listener = new NullProgressListener();
+            ProgressListener listener = new DefaultProgressListener();
             List<org.geogit.api.Node> insertedTarget = null;
             Integer collectionSize = Integer.valueOf(features.size());
             workTree.insert(parentPath, iterator, listener, insertedTarget, collectionSize);
@@ -398,7 +396,7 @@ public class OSMHistoryImport extends AbstractCommand implements CLICommand {
         final Way way = (Way) primitive;
         final ImmutableList<Long> nodes = way.getNodes();
 
-        StagingArea index = geogit.getRepository().getIndex();
+        StagingArea index = geogit.getRepository().index();
 
         FeatureBuilder featureBuilder = new FeatureBuilder(NODE_REV_TYPE);
         List<Coordinate> coordinates = Lists.newArrayList(nodes.size());

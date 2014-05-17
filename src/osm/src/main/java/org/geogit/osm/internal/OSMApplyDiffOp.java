@@ -15,16 +15,16 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 import org.geogit.api.AbstractGeoGitOp;
-import org.geogit.api.CommandLocator;
+import org.geogit.api.Context;
 import org.geogit.api.NodeRef;
 import org.geogit.api.Platform;
+import org.geogit.api.ProgressListener;
+import org.geogit.api.SubProgressListener;
 import org.geogit.api.plumbing.FindTreeChild;
 import org.geogit.repository.FeatureToDelete;
 import org.geogit.repository.WorkingTree;
-import org.geotools.util.SubProgressListener;
 import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.util.ProgressListener;
 import org.openstreetmap.osmosis.core.container.v0_6.ChangeContainer;
 import org.openstreetmap.osmosis.core.container.v0_6.EntityContainer;
 import org.openstreetmap.osmosis.core.domain.v0_6.Entity;
@@ -40,7 +40,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.google.inject.Inject;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -65,13 +64,6 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
      */
     private File file;
 
-    private Platform platform;
-
-    @Inject
-    public OSMApplyDiffOp(Platform platform) {
-        this.platform = platform;
-    }
-
     public OSMApplyDiffOp setDiffFile(File file) {
         this.file = file;
         return this;
@@ -79,7 +71,7 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
 
     @SuppressWarnings("deprecation")
     @Override
-    public Optional<OSMReport> call() {
+    protected  Optional<OSMReport> _call() {
         checkNotNull(file);
         Preconditions.checkArgument(file.exists(), "File does not exist: " + file);
 
@@ -93,7 +85,7 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
     }
 
     public OSMReport parseDiffFileAndInsert() {
-        final WorkingTree workTree = getWorkTree();
+        final WorkingTree workTree = workingTree();
 
         final int queueCapacity = 100 * 1000;
         final int timeout = 1;
@@ -107,8 +99,8 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
         XmlChangeReader reader = new XmlChangeReader(file, true, resolveCompressionMethod(file));
 
         ProgressListener progressListener = getProgressListener();
-        ConvertAndImportSink sink = new ConvertAndImportSink(target, getCommandLocator(),
-                getWorkTree(), platform, new SubProgressListener(progressListener, 100));
+        ConvertAndImportSink sink = new ConvertAndImportSink(target, context,
+                workingTree(), platform(), new SubProgressListener(progressListener, 100));
         reader.setChangeSink(sink);
 
         Thread readerThread = new Thread(reader, "osm-diff-reader-thread");
@@ -119,7 +111,7 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
         SubProgressListener noProgressReportingListener = new SubProgressListener(progressListener,
                 0) {
             @Override
-            public void progress(float progress) {
+            public void setProgress(float progress) {
                 // no-op
             }
         };
@@ -185,7 +177,7 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
 
         private Geometry bbox;
 
-        public ConvertAndImportSink(QueueIterator<Feature> target, CommandLocator cmdLocator,
+        public ConvertAndImportSink(QueueIterator<Feature> target, Context cmdLocator,
                 WorkingTree workTree, Platform platform, ProgressListener progressListener) {
             super();
             this.target = target;
@@ -228,7 +220,7 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
 
         @Override
         public void complete() {
-            progressListener.progress(count);
+            progressListener.setProgress(count);
             progressListener.complete();
             target.finish();
             pointCache.dispose();
@@ -264,7 +256,7 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
             }
 
             if (++count % 10 == 0) {
-                progressListener.progress(count);
+                progressListener.setProgress(count);
             }
             latestChangeset = Math.max(latestChangeset, entity.getChangesetId());
             latestTimestamp = Math.max(latestTimestamp, entity.getTimestamp().getTime());
@@ -341,8 +333,14 @@ public class OSMApplyDiffOp extends AbstractGeoGitOp<Optional<OSMReport>> {
 
             final List<Long> ids = Lists.transform(nodes, NODELIST_TO_ID_LIST);
 
-            Coordinate[] coordinates = pointCache.get(ids);
-            return GEOMF.createLineString(coordinates);
+            try {
+                Coordinate[] coordinates = pointCache.get(ids);
+                return GEOMF.createLineString(coordinates);
+            } catch (IllegalArgumentException e) {
+                unableToProcessCount++;
+                return null;
+            }
+
         }
     }
 

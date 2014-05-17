@@ -42,6 +42,12 @@ public class RemoteAdd extends AbstractCommand implements CLICommand {
     @Parameter(names = { "-t", "--track" }, description = "branch to track")
     private String branch = "*";
 
+    @Parameter(names = { "-u", "--username" }, description = "user name")
+    private String username = null;
+
+    @Parameter(names = { "-p", "--password" }, description = "password")
+    private String password = null;
+
     @Parameter(description = "<name> <url>")
     private List<String> params = new ArrayList<String>();
 
@@ -51,13 +57,13 @@ public class RemoteAdd extends AbstractCommand implements CLICommand {
     @Override
     public void runInternal(GeogitCLI cli) {
         if (params == null || params.size() != 2) {
-            printUsage();
+            printUsage(cli);
             throw new CommandFailedException();
         }
 
         try {
             cli.getGeogit().command(RemoteAddOp.class).setName(params.get(0)).setURL(params.get(1))
-                    .setBranch(branch).call();
+                    .setBranch(branch).setUserName(username).setPassword(password).call();
         } catch (RemoteException e) {
             switch (e.statusCode) {
             case REMOTE_ALREADY_EXISTS:

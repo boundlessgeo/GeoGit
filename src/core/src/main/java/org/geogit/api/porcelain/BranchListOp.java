@@ -14,7 +14,6 @@ import org.geogit.api.plumbing.ForEachRef;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.inject.Inject;
 
 /**
  * Creates a new head ref (branch) pointing to the specified tree-ish or the current HEAD if no
@@ -30,7 +29,6 @@ public class BranchListOp extends AbstractGeoGitOp<ImmutableList<Ref>> {
 
     private boolean locals;
 
-    @Inject
     public BranchListOp() {
         locals = true;
         remotes = false;
@@ -46,7 +44,7 @@ public class BranchListOp extends AbstractGeoGitOp<ImmutableList<Ref>> {
         return this;
     }
 
-    public ImmutableList<Ref> call() {
+    protected  ImmutableList<Ref> _call() {
 
         final Predicate<Ref> filter = new Predicate<Ref>() {
             @Override

@@ -115,9 +115,9 @@ public class MergeWebOp extends AbstractWebAPICommand {
                 @Override
                 public void write(ResponseWriter out) throws Exception {
                     out.start();
-                    out.writeMergeResponse(report.getReport().get(), transaction, report.getOurs(),
-                            report.getPairs().get(0).getTheirs(), report.getPairs().get(0)
-                                    .getAncestor());
+                    out.writeMergeResponse(Optional.fromNullable(report.getMergeCommit()), report
+                            .getReport().get(), transaction, report.getOurs(), report.getPairs()
+                            .get(0).getTheirs(), report.getPairs().get(0).getAncestor());
                     out.finish();
                 }
             });
@@ -125,7 +125,7 @@ public class MergeWebOp extends AbstractWebAPICommand {
             final RevCommit ours = context.getGeoGIT().getRepository()
                     .getCommit(currHead.get().getObjectId());
             final RevCommit theirs = context.getGeoGIT().getRepository().getCommit(oid.get());
-            final Optional<RevCommit> ancestor = transaction.command(FindCommonAncestor.class)
+            final Optional<ObjectId> ancestor = transaction.command(FindCommonAncestor.class)
                     .setLeft(ours).setRight(theirs).call();
             context.setResponseContent(new CommandResponse() {
                 final MergeScenarioReport report = transaction.command(ReportMergeScenarioOp.class)
@@ -134,8 +134,9 @@ public class MergeWebOp extends AbstractWebAPICommand {
                 @Override
                 public void write(ResponseWriter out) throws Exception {
                     out.start();
-                    out.writeMergeResponse(report, transaction, ours.getId(), theirs.getId(),
-                            ancestor.get().getId());
+                    Optional<RevCommit> mergeCommit = Optional.absent();
+                    out.writeMergeResponse(mergeCommit, report, transaction, ours.getId(),
+                            theirs.getId(), ancestor.get());
                     out.finish();
                 }
             });

@@ -8,7 +8,7 @@ import java.util.Iterator;
 
 import javax.annotation.Nullable;
 
-import org.geogit.api.CommandLocator;
+import org.geogit.api.Context;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
@@ -96,7 +96,7 @@ public class PullWebOp extends AbstractWebAPICommand {
      */
     @Override
     public void run(CommandContext context) {
-        final CommandLocator geogit = this.getCommandLocator(context);
+        final Context geogit = this.getCommandLocator(context);
 
         PullOp command = geogit.command(PullOp.class)
                 .setAuthor(authorName.orNull(), authorEmail.orNull()).setRemote(remoteName)
@@ -160,7 +160,7 @@ public class PullWebOp extends AbstractWebAPICommand {
                     .getCommit(sourceRef.get().getObjectId());
             final RevCommit ours = context.getGeoGIT().getRepository()
                     .getCommit(destRef.get().getObjectId());
-            final Optional<RevCommit> ancestor = geogit.command(FindCommonAncestor.class)
+            final Optional<ObjectId> ancestor = geogit.command(FindCommonAncestor.class)
                     .setLeft(ours).setRight(theirs).call();
             context.setResponseContent(new CommandResponse() {
                 final MergeScenarioReport report = geogit.command(ReportMergeScenarioOp.class)
@@ -169,8 +169,9 @@ public class PullWebOp extends AbstractWebAPICommand {
                 @Override
                 public void write(ResponseWriter out) throws Exception {
                     out.start();
-                    out.writeMergeResponse(report, geogit, ours.getId(), theirs.getId(), ancestor
-                            .get().getId());
+                    Optional<RevCommit> mergeCommit = Optional.absent();
+                    out.writeMergeResponse(mergeCommit, report, geogit, ours.getId(),
+                            theirs.getId(), ancestor.get());
                     out.finish();
                 }
             });

@@ -4,22 +4,25 @@
  */
 package org.geogit.storage;
 
-import java.io.IOException;
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.geogit.api.ObjectId;
-import org.geogit.test.integration.RepositoryTestCase;
+import org.geogit.api.TestPlatform;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
-import com.google.inject.Injector;
 
 /**
  * Abstract test suite for {@link GraphDatabase} implementations.
@@ -27,20 +30,30 @@ import com.google.inject.Injector;
  * Create a concrete subclass of this test suite and implement {@link #createInjector()} so that
  * {@code GraphDtabase.class} is bound to your implementation instance as a singleton.
  */
-public abstract class GraphDatabaseStressTest extends RepositoryTestCase {
+public abstract class GraphDatabaseStressTest  {
     protected GraphDatabase database;
 
-    @Override
-    protected void setUpInternal() throws Exception {
-        database = (GraphDatabase) geogit.getRepository().getGraphDatabase();
+    protected TestPlatform platform;
+
+    @Rule
+    public TemporaryFolder tmpFolder = new TemporaryFolder();
+
+    @Before
+    public void setUp() throws Exception {
+        File root = tmpFolder.getRoot();
+        tmpFolder.newFolder(".geogit");
+        platform = new TestPlatform(root);
+        platform.setUserHome(tmpFolder.newFolder("fake_home"));
+        database = createDatabase(platform);
+        database.open();
     }
 
-    protected abstract Injector createInjector();
+    protected abstract GraphDatabase createDatabase(TestPlatform platform);
 
     @Test
     public void testConcurrentUses() throws Exception {
         ConcurrentLinkedQueue<String> errorLog = new ConcurrentLinkedQueue<String>();
-        //ExecutorService executor = Executors.newCachedThreadPool();
+        // ExecutorService executor = Executors.newCachedThreadPool();
         ExecutorService executor = Executors.newSingleThreadExecutor();
         List<Future<?>> futures = new ArrayList<Future<?>>();
         for (String s : new String[] { "a", "b", "c", "d" }) {
@@ -58,7 +71,9 @@ public abstract class GraphDatabaseStressTest extends RepositoryTestCase {
 
     private class InsertMany implements Runnable {
         private final String key;
+
         private final ConcurrentLinkedQueue errorLog;
+
         public InsertMany(String key, ConcurrentLinkedQueue<String> errorLog) {
             this.key = key;
             this.errorLog = errorLog;

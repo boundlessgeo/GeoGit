@@ -24,6 +24,7 @@ import org.geogit.api.ObjectId;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
 import org.geogit.api.RevObject;
+import org.geogit.api.RevTag;
 import org.geogit.api.porcelain.SynchronizationException;
 import org.geogit.repository.Repository;
 import org.geogit.storage.DeduplicationService;
@@ -49,7 +50,7 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
     private URL repositoryURL;
 
     private List<ObjectId> fetchedIds;
-    
+
     final private DeduplicationService deduplicationService;
 
     /**
@@ -57,7 +58,8 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
      * 
      * @param repositoryURL the url of the remote repository
      */
-    public HttpRemoteRepo(URL repositoryURL, Repository localRepository, DeduplicationService deduplicationService) {
+    public HttpRemoteRepo(URL repositoryURL, Repository localRepository,
+            DeduplicationService deduplicationService) {
         super(localRepository);
         this.deduplicationService = deduplicationService;
         String url = repositoryURL.toString();
@@ -105,7 +107,7 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
             connection.setRequestMethod("GET");
 
             connection.setUseCaches(false);
-            connection.setDoOutput(true);
+            connection.connect();
 
             // Get Response
             InputStream is = connection.getInputStream();
@@ -151,7 +153,7 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
             connection.setRequestMethod("GET");
 
             connection.setUseCaches(false);
-            connection.setDoOutput(true);
+            connection.connect();
 
             // Get Response
             InputStream is = connection.getInputStream();
@@ -200,7 +202,7 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
             }
         } catch (Exception e) {
             for (ObjectId oid : fetchedIds) {
-                localRepository.getObjectDatabase().delete(oid);
+                localRepository.objectDatabase().delete(oid);
             }
             Throwables.propagate(e);
         } finally {
@@ -245,7 +247,8 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
         endPush(refspec, ref.getObjectId(), originalRemoteRefValue.toString());
     }
 
-    private void sendPackedObjects(final List<ObjectId> toSend, final Set<ObjectId> roots, Deduplicator deduplicator) {
+    private void sendPackedObjects(final List<ObjectId> toSend, final Set<ObjectId> roots,
+            Deduplicator deduplicator) {
         Set<ObjectId> sent = new HashSet<ObjectId>();
         while (!toSend.isEmpty()) {
             try {
@@ -269,8 +272,9 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
                     }
                 };
                 BinaryPackedObjects packer = new BinaryPackedObjects(
-                        localRepository.getObjectDatabase());
-                packer.write(out, toSend, ImmutableList.copyOf(roots), sent, callback, false, deduplicator);
+                        localRepository.objectDatabase());
+                packer.write(out, toSend, ImmutableList.copyOf(roots), sent, callback, false,
+                        deduplicator);
                 out.flush();
                 out.close();
 
@@ -342,7 +346,7 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
             throw Throwables.propagate(e);
         }
 
-        BinaryPackedObjects unpacker = new BinaryPackedObjects(localRepository.getObjectDatabase());
+        BinaryPackedObjects unpacker = new BinaryPackedObjects(localRepository.objectDatabase());
         BinaryPackedObjects.Callback<Void> callback = new BinaryPackedObjects.Callback<Void>() {
             @Override
             public Void callback(RevObject object, Void state) {
@@ -351,6 +355,11 @@ class HttpRemoteRepo extends AbstractRemoteRepo {
                     want.remove(commit.getId());
                     have.removeAll(commit.getParentIds());
                     have.add(commit.getId());
+                } else if (object instanceof RevTag) {
+                    RevTag tag = (RevTag) object;
+                    want.remove(tag.getId());
+                    have.remove(tag.getCommitId());
+                    have.add(tag.getId());
                 }
                 return null;
             }

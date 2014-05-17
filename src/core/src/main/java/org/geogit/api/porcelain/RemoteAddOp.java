@@ -12,8 +12,6 @@ import org.geogit.api.Remote;
 import org.geogit.api.porcelain.RemoteException.StatusCode;
 import org.geogit.storage.ConfigDatabase;
 
-import com.google.inject.Inject;
-
 /**
  * Adds a remote to the local config database.
  * 
@@ -28,19 +26,11 @@ public class RemoteAddOp extends AbstractGeoGitOp<Remote> {
 
     private String branch;
 
+    private String username;
+
+    private String password;
+
     private boolean mapped = false;
-
-    final private ConfigDatabase config;
-
-    /**
-     * Constructs a new {@code RemoteAddOp} with the given config database.
-     * 
-     * @param config where to store the remote
-     */
-    @Inject
-    public RemoteAddOp(ConfigDatabase config) {
-        this.config = config;
-    }
 
     /**
      * Executes the remote-add operation.
@@ -48,7 +38,7 @@ public class RemoteAddOp extends AbstractGeoGitOp<Remote> {
      * @return the {@link Remote} that was added.
      */
     @Override
-    public Remote call() {
+    protected Remote _call() {
         if (name == null || name.isEmpty()) {
             throw new RemoteException(StatusCode.MISSING_NAME);
         }
@@ -59,6 +49,7 @@ public class RemoteAddOp extends AbstractGeoGitOp<Remote> {
             branch = "*";
         }
 
+        ConfigDatabase config = configDatabase();
         List<String> allRemotes = config.getAllSubsections("remote");
         if (allRemotes.contains(name)) {
             throw new RemoteException(StatusCode.REMOTE_ALREADY_EXISTS);
@@ -74,8 +65,15 @@ public class RemoteAddOp extends AbstractGeoGitOp<Remote> {
             config.put(configSection + ".mapped", "true");
             config.put(configSection + ".mappedBranch", branch);
         }
+        if (username != null) {
+            config.put(configSection + ".username", username);
+        }
+        if (password != null) {
+            password = Remote.encryptPassword(password);
+            config.put(configSection + ".password", password);
+        }
 
-        return new Remote(name, url, url, fetch, mapped, branch);
+        return new Remote(name, url, url, fetch, mapped, branch, username, password);
     }
 
     /**
@@ -102,6 +100,24 @@ public class RemoteAddOp extends AbstractGeoGitOp<Remote> {
      */
     public RemoteAddOp setBranch(String branch) {
         this.branch = branch;
+        return this;
+    }
+
+    /**
+     * @param username user name for the repository
+     * @return {@code this}
+     */
+    public RemoteAddOp setUserName(String username) {
+        this.username = username;
+        return this;
+    }
+
+    /**
+     * @param password password for the repository
+     * @return {@code this}
+     */
+    public RemoteAddOp setPassword(String password) {
+        this.password = password;
         return this;
     }
 

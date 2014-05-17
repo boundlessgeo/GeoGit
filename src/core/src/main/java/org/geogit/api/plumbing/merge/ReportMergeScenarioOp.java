@@ -35,7 +35,6 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Maps;
-import com.google.inject.Inject;
 
 /**
  * Reports conflicts between changes introduced by two different histories. Given a commit and
@@ -48,10 +47,6 @@ public class ReportMergeScenarioOp extends AbstractGeoGitOp<MergeScenarioReport>
     private RevCommit toMerge;
 
     private RevCommit mergeInto;
-
-    @Inject
-    public ReportMergeScenarioOp() {
-    }
 
     /**
      * @param toMerge the commit with the changes to apply {@link RevCommit}
@@ -70,16 +65,16 @@ public class ReportMergeScenarioOp extends AbstractGeoGitOp<MergeScenarioReport>
     }
 
     @Override
-    public MergeScenarioReport call() {
+    protected MergeScenarioReport _call() {
 
-        Optional<RevCommit> ancestor = command(FindCommonAncestor.class).setLeft(toMerge)
+        Optional<ObjectId> ancestor = command(FindCommonAncestor.class).setLeft(toMerge)
                 .setRight(mergeInto).call();
         Preconditions.checkState(ancestor.isPresent(), "No ancestor commit could be found.");
 
         Map<String, DiffEntry> mergeIntoDiffs = Maps.newHashMap();
         MergeScenarioReport report = new MergeScenarioReport();
 
-        Iterator<DiffEntry> diffs = command(DiffTree.class).setOldTree(ancestor.get().getId())
+        Iterator<DiffEntry> diffs = command(DiffTree.class).setOldTree(ancestor.get())
                 .setReportTrees(true).setNewTree(mergeInto.getId()).call();
         while (diffs.hasNext()) {
             DiffEntry diff = diffs.next();
@@ -87,16 +82,17 @@ public class ReportMergeScenarioOp extends AbstractGeoGitOp<MergeScenarioReport>
             mergeIntoDiffs.put(path, diff);
         }
 
-        Iterator<DiffEntry> toMergeDiffs = command(DiffTree.class)
-                .setOldTree(ancestor.get().getId()).setReportTrees(true)
-                .setNewTree(toMerge.getId()).call();
+        Iterator<DiffEntry> toMergeDiffs = command(DiffTree.class).setOldTree(ancestor.get())
+                .setReportTrees(true).setNewTree(toMerge.getId()).call();
         while (toMergeDiffs.hasNext()) {
             DiffEntry toMergeDiff = toMergeDiffs.next();
             String path = toMergeDiff.oldPath() == null ? toMergeDiff.newPath() : toMergeDiff
                     .oldPath();
             if (mergeIntoDiffs.containsKey(path)) {
+                RevCommit ancestorCommit = command(RevObjectParse.class)
+                        .setRefSpec(ancestor.get().toString()).call(RevCommit.class).get();
                 RevTree ancestorTree = command(RevObjectParse.class)
-                        .setObjectId(ancestor.get().getTreeId()).call(RevTree.class).get();
+                        .setObjectId(ancestorCommit.getTreeId()).call(RevTree.class).get();
                 Optional<NodeRef> ancestorVersion = command(FindTreeChild.class).setChildPath(path)
                         .setParent(ancestorTree).call();
                 ObjectId ancestorVersionId = ancestorVersion.isPresent() ? ancestorVersion.get()
@@ -215,8 +211,11 @@ public class ReportMergeScenarioOp extends AbstractGeoGitOp<MergeScenarioReport>
                         for (Entry<String, DiffEntry> entry : entries) {
                             if (entry.getKey().startsWith(parentPath)) {
                                 if (!ChangeType.REMOVED.equals(entry.getValue().changeType())) {
+                                    RevCommit ancestorCommit = command(RevObjectParse.class)
+                                            .setRefSpec(ancestor.get().toString())
+                                            .call(RevCommit.class).get();
                                     RevTree ancestorTree = command(RevObjectParse.class)
-                                            .setObjectId(ancestor.get().getTreeId())
+                                            .setObjectId(ancestorCommit.getTreeId())
                                             .call(RevTree.class).get();
                                     Optional<NodeRef> ancestorVersion = command(FindTreeChild.class)
                                             .setChildPath(path).setParent(ancestorTree).call();

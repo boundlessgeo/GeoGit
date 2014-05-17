@@ -8,7 +8,7 @@ Feature: "commit" command
     Given I have a repository
      And I have staged "points1"     
      And I run the command "commit -t 2010-04-22T19:53:23Z -m msg"
-    When I run the command "log"
+    When I run the command "log --utc"
     Then the response should contain "2010-04-22"
     
   Scenario: Try to commit with timestamp in millisecs
@@ -25,6 +25,15 @@ Feature: "commit" command
       And I have staged "lines1"
      When I run the command "commit -m Test"
      Then the response should contain "3 features added"
+     
+  Scenario: Try to commit current staged features using a message with blank spaces
+    Given I have a repository
+      And I have staged "points1"
+      And I have staged "points2"
+      And I have staged "lines1"
+     When I run the command "commit -m "A message with spaces""
+     Then the response should contain "3 features added" 
+      And the response should contain "A message with spaces"    
      
   Scenario: Try to perform multiple commits
     Given I have a repository

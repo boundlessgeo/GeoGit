@@ -17,12 +17,16 @@ import java.io.File;
 import java.util.Iterator;
 
 import org.geogit.api.CommitBuilder;
+import org.geogit.api.Context;
 import org.geogit.api.ObjectId;
 import org.geogit.api.Platform;
 import org.geogit.api.RevCommit;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevObject;
 import org.geogit.api.TestPlatform;
+import org.geogit.di.Decorator;
+import org.geogit.di.DecoratorProvider;
+import org.geogit.di.GuiceInjector;
 import org.geogit.storage.ConfigDatabase;
 import org.geogit.storage.ObjectDatabase;
 import org.geogit.storage.ObjectSerializingFactory;
@@ -35,7 +39,9 @@ import org.geogit.test.integration.RepositoryTestCase;
 import org.geotools.data.DataUtilities;
 import org.geotools.feature.SchemaException;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.opengis.feature.simple.SimpleFeatureType;
 
 import com.google.common.base.Throwables;
@@ -43,9 +49,9 @@ import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 
 public class CachingModuleTest {
@@ -62,6 +68,9 @@ public class CachingModuleTest {
 
     private static final RevObject s1 = obj("s1"), s2 = obj("s2"), s3 = ft("s3");
 
+    @Rule
+    public TemporaryFolder tmpFolder = new TemporaryFolder();
+
     @Before
     public void setUp() throws Exception {
         odbCache = mock(Cache.class);
@@ -73,12 +82,17 @@ public class CachingModuleTest {
         final StagingDatabaseCacheFactory indexCacheFac = mock(StagingDatabaseCacheFactory.class);
         when(indexCacheFac.get()).thenReturn(indexCache);
 
-        final Platform platform = new TestPlatform(new File("target"));
+        File workingDirectory = tmpFolder.getRoot();
+        final Platform platform = new TestPlatform(workingDirectory);
 
         Module module = new AbstractModule() {
 
             @Override
             protected void configure() {
+                bind(Context.class).to(GuiceInjector.class).in(Scopes.SINGLETON);
+
+                Multibinder.newSetBinder(binder(), Decorator.class);
+                bind(DecoratorProvider.class).in(Scopes.SINGLETON);
 
                 DataStreamSerializationFactory sfac = new DataStreamSerializationFactory();
                 bind(ObjectSerializingFactory.class).toInstance(sfac);
@@ -94,11 +108,12 @@ public class CachingModuleTest {
             }
         };
 
-        Injector injector = Guice
-                .createInjector(Modules.override(new CachingModule()).with(module));
+        Context injector = Guice
+                .createInjector(Modules.override(new CachingModule()).with(module)).getInstance(
+                        org.geogit.api.Context.class);
 
-        odb = injector.getInstance(ObjectDatabase.class);
-        index = injector.getInstance(StagingDatabase.class);
+        odb = injector.objectDatabase();
+        index = injector.stagingDatabase();
         odb.open();
         index.open();
 
@@ -166,5 +181,5 @@ public class CachingModuleTest {
         actual = index.get(s3.getId());
         assertNotSame(s3, actual);
         assertEquals(s3, actual);
-}
+    }
 }

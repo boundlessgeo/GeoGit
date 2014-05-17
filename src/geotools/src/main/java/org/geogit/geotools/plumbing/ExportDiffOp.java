@@ -15,6 +15,7 @@ import javax.annotation.Nullable;
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.ProgressListener;
 import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevObject.TYPE;
@@ -25,7 +26,6 @@ import org.geogit.api.plumbing.diff.DiffEntry;
 import org.geogit.api.porcelain.DiffOp;
 import org.geogit.geotools.plumbing.GeoToolsOpException.StatusCode;
 import org.geogit.storage.ObjectDatabase;
-import org.geogit.storage.StagingDatabase;
 import org.geotools.data.DefaultTransaction;
 import org.geotools.data.Transaction;
 import org.geotools.data.simple.SimpleFeatureStore;
@@ -40,7 +40,6 @@ import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.AttributeDescriptor;
-import org.opengis.util.ProgressListener;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
@@ -51,7 +50,6 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.UnmodifiableIterator;
-import com.google.inject.Inject;
 
 /**
  * Internal operation for creating a FeatureCollection from a tree content.
@@ -74,8 +72,6 @@ public class ExportDiffOp extends AbstractGeoGitOp<SimpleFeatureStore> {
 
     private Supplier<SimpleFeatureStore> targetStoreProvider;
 
-    private StagingDatabase database;
-
     private Function<Feature, Optional<Feature>> function = IDENTITY;
 
     private boolean transactional;
@@ -87,22 +83,12 @@ public class ExportDiffOp extends AbstractGeoGitOp<SimpleFeatureStore> {
     private String oldRef;
 
     /**
-     * Constructs a new export operation.
-     */
-    @Inject
-    public ExportDiffOp(StagingDatabase database) {
-        this.database = database;
-        this.transactional = true;
-    }
-
-    /**
      * Executes the export operation using the parameters that have been specified.
      * 
      * @return a FeatureCollection with the specified features
      */
-    @SuppressWarnings("deprecation")
     @Override
-    public SimpleFeatureStore call() {
+    protected  SimpleFeatureStore _call() {
 
         final SimpleFeatureStore targetStore = getTargetStore();
 
@@ -124,10 +110,21 @@ public class ExportDiffOp extends AbstractGeoGitOp<SimpleFeatureStore> {
                 Iterator<DiffEntry> diffs = command(DiffOp.class).setOldVersion(oldRef)
                         .setNewVersion(newRef).setFilter(path).call();
 
-                final Iterator<SimpleFeature> plainFeatures = getFeatures(diffs, old, database,
+                final Iterator<SimpleFeature> plainFeatures = getFeatures(diffs, old, stagingDatabase(),
                         defaultMetadataId, progressListener);
 
-                return new DelegateFeatureIterator<SimpleFeature>(plainFeatures);
+                Iterator<Optional<Feature>> transformed = Iterators.transform(plainFeatures,
+                        ExportDiffOp.this.function);
+
+                Iterator<SimpleFeature> filtered = Iterators.filter(Iterators.transform(
+                        transformed, new Function<Optional<Feature>, SimpleFeature>() {
+                            @Override
+                            public SimpleFeature apply(Optional<Feature> input) {
+                                return (SimpleFeature) (input.isPresent() ? input.get() : null);
+                            }
+                        }), Predicates.notNull());
+
+                return new DelegateFeatureIterator<SimpleFeature>(filtered);
             }
         };
 
@@ -236,7 +233,7 @@ public class ExportDiffOp extends AbstractGeoGitOp<SimpleFeatureStore> {
 
         checkArgument(rootTreeId.isPresent(), "Invalid tree spec: %s", refspec);
 
-        RevTree rootTree = database.getTree(rootTreeId.get());
+        RevTree rootTree = stagingDatabase().getTree(rootTreeId.get());
         return rootTree;
     }
 
@@ -283,6 +280,30 @@ public class ExportDiffOp extends AbstractGeoGitOp<SimpleFeatureStore> {
      */
     public ExportDiffOp setPath(String path) {
         this.path = path;
+        return this;
+    }
+
+    /**
+     * Sets the function to use for creating a valid Feature that has the FeatureType of the output
+     * FeatureStore, based on the actual FeatureType of the Features to export.
+     * 
+     * The Export operation assumes that the feature returned by this function are valid to be added
+     * to the current FeatureSource, and, therefore, performs no checking of FeatureType matching.
+     * It is up to the user performing the export to ensure that the function actually generates
+     * valid features for the current FeatureStore.
+     * 
+     * If no function is explicitly set, an identity function is used, and Features are not
+     * converted.
+     * 
+     * This function can be used as a filter as well. If the returned object is Optional.absent, no
+     * feature will be added
+     * 
+     * @param function
+     * @return {@code this}
+     */
+    public ExportDiffOp setFeatureTypeConversionFunction(
+            Function<Feature, Optional<Feature>> function) {
+        this.function = function == null ? IDENTITY : function;
         return this;
     }
 

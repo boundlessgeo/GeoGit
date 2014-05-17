@@ -42,7 +42,7 @@ public class OSMUnmap extends AbstractCommand implements CLICommand {
     protected void runInternal(GeogitCLI cli) throws IOException{
 
         if (args == null || args.isEmpty() || args.size() != 1) {
-            printUsage();
+            printUsage(cli);
             throw new CommandFailedException();
         }
 
@@ -50,7 +50,7 @@ public class OSMUnmap extends AbstractCommand implements CLICommand {
 
         geogit = cli.getGeogit();
 
-        ObjectId oldTreeId = geogit.getRepository().getWorkingTree().getTree().getId();
+        ObjectId oldTreeId = geogit.getRepository().workingTree().getTree().getId();
 
         ObjectId newTreeId = geogit.command(OSMUnmapOp.class).setPath(path).call().getId();
 

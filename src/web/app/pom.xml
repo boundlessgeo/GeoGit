@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.geogit</groupId>
     <artifactId>web</artifactId>
-    <version>0.8-SNAPSHOT</version>
+    <version>0.9-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -24,6 +24,19 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.restlet</groupId>
+      <artifactId>org.restlet</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.noelios.restlet</groupId>
+      <artifactId>com.noelios.restlet.ext.jetty</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.noelios.restlet</groupId>
+      <artifactId>com.noelios.restlet.ext.servlet</artifactId>
+    </dependency>
+    
+    <dependency>
       <groupId>org.geogit</groupId>
       <artifactId>geogit-web-api</artifactId>
       <version>${project.version}</version>
@@ -37,14 +50,6 @@
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.restlet.jse</groupId>
-      <artifactId>org.restlet.ext.jetty</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.restlet.jee</groupId>
-      <artifactId>org.restlet.ext.servlet</artifactId>
-    </dependency>
   </dependencies>
 
   <build>
@@ -53,6 +58,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
         <configuration>
+          <archiveClasses>true</archiveClasses> <!-- create jar inside WEB-INF/lib with this module's classes -->
+          <attachClasses>true</attachClasses> <!-- install a jar with this web app classes with the "classes" classifier -->
           <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
         </configuration>
       </plugin>
@@ -63,38 +70,6 @@
           <reload>automatic</reload>
           <scanIntervalSeconds>5</scanIntervalSeconds>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-           <id>jar</id>
-           <phase>package</phase>
-           <goals>
-             <goal>jar</goal>
-           </goals>
-         </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-install-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>install</phase>
-            <goals>
-              <goal>install-file</goal>
-            </goals>
-            <configuration>
-              <packaging>jar</packaging>
-              <artifactId>${project.artifactId}</artifactId>
-              <groupId>${project.groupId}</groupId>
-              <version>${project.version}</version>
-              <file>${project.build.directory}/${project.artifactId}-${project.version}.jar</file>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

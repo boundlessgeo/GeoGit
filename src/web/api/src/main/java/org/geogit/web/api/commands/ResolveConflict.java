@@ -6,7 +6,7 @@ package org.geogit.web.api.commands;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import org.geogit.api.CommandLocator;
+import org.geogit.api.Context;
 import org.geogit.api.Node;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
@@ -26,7 +26,6 @@ import org.geogit.web.api.CommandSpecException;
 import org.geogit.web.api.ResponseWriter;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.opengis.geometry.BoundingBox;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 import com.google.common.base.Optional;
@@ -72,9 +71,9 @@ public class ResolveConflict extends AbstractWebAPICommand {
             throw new CommandSpecException(
                     "No transaction was specified, add requires a transaction to preserve the stability of the repository.");
         }
-        final CommandLocator geogit = this.getCommandLocator(context);
+        final Context geogit = this.getCommandLocator(context);
 
-        RevTree revTree = geogit.getWorkingTree().getTree();
+        RevTree revTree = geogit.workingTree().getTree();
 
         Optional<NodeRef> nodeRef = geogit.command(FindTreeChild.class).setParent(revTree)
                 .setChildPath(NodeRef.parentPath(path)).setIndex(true).call();
@@ -107,7 +106,7 @@ public class ResolveConflict extends AbstractWebAPICommand {
                 TYPE.FEATURE, bounds), NodeRef.parentPath(path), ObjectId.NULL);
 
         Optional<NodeRef> parentNode = geogit.command(FindTreeChild.class)
-                .setParent(geogit.getWorkingTree().getTree()).setChildPath(node.getParentPath())
+                .setParent(geogit.workingTree().getTree()).setChildPath(node.getParentPath())
                 .setIndex(true).call();
         RevTreeBuilder treeBuilder = null;
         ObjectId metadataId = ObjectId.NULL;
@@ -116,19 +115,19 @@ public class ResolveConflict extends AbstractWebAPICommand {
             Optional<RevTree> parsed = geogit.command(RevObjectParse.class)
                     .setObjectId(parentNode.get().getNode().getObjectId()).call(RevTree.class);
             checkState(parsed.isPresent(), "Parent tree couldn't be found in the repository.");
-            treeBuilder = new RevTreeBuilder(geogit.getIndex().getDatabase(), parsed.get());
+            treeBuilder = new RevTreeBuilder(geogit.objectDatabase(), parsed.get());
             treeBuilder.remove(node.getNode().getName());
         } else {
-            treeBuilder = new RevTreeBuilder(geogit.getIndex().getDatabase());
+            treeBuilder = new RevTreeBuilder(geogit.stagingDatabase());
         }
         treeBuilder.put(node.getNode());
         ObjectId newTreeId = geogit
                 .command(WriteBack.class)
                 .setAncestor(
-                        geogit.getWorkingTree().getTree().builder(geogit.getIndex().getDatabase()))
+                        geogit.workingTree().getTree().builder(geogit.stagingDatabase()))
                 .setChildPath(node.getParentPath()).setToIndex(true).setTree(treeBuilder.build())
                 .setMetadataId(metadataId).call();
-        geogit.getWorkingTree().updateWorkHead(newTreeId);
+        geogit.workingTree().updateWorkHead(newTreeId);
 
         AddOp command = geogit.command(AddOp.class);
 

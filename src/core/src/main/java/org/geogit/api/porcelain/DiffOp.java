@@ -46,7 +46,7 @@ import org.geogit.di.CanRunDuringConflict;
  * @see DiffTree
  */
 @CanRunDuringConflict
-public class DiffOp extends AbstractGeoGitOp<Iterator<DiffEntry>> {
+public class DiffOp extends AbstractGeoGitOp<Iterator<DiffEntry>> implements Iterable<DiffEntry> {
 
     private String oldRefSpec;
 
@@ -61,8 +61,9 @@ public class DiffOp extends AbstractGeoGitOp<Iterator<DiffEntry>> {
     /**
      * @param compareIndex if true, the index will be used in the comparison
      */
-    public void setCompareIndex(boolean compareIndex) {
+    public DiffOp setCompareIndex(boolean compareIndex) {
         this.cached = compareIndex;
+        return this;
     }
 
     /**
@@ -115,7 +116,7 @@ public class DiffOp extends AbstractGeoGitOp<Iterator<DiffEntry>> {
      * @see DiffEntry
      */
     @Override
-    public Iterator<DiffEntry> call() {
+    protected  Iterator<DiffEntry> _call() {
         checkArgument(cached && oldRefSpec == null || !cached, String.format(
                 "compare index allows only one revision to check against, got %s / %s", oldRefSpec,
                 newRefSpec));
@@ -155,6 +156,11 @@ public class DiffOp extends AbstractGeoGitOp<Iterator<DiffEntry>> {
     public DiffOp setReportTrees(boolean reportTrees) {
         this.reportTrees = reportTrees;
         return this;
+    }
+
+    @Override
+    public Iterator<DiffEntry> iterator() {
+        return call();
     }
 
 }

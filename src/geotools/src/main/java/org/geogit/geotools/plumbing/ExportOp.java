@@ -19,11 +19,13 @@ import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.FeatureBuilder;
 import org.geogit.api.NodeRef;
 import org.geogit.api.ObjectId;
+import org.geogit.api.ProgressListener;
 import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureType;
 import org.geogit.api.RevObject;
 import org.geogit.api.RevObject.TYPE;
 import org.geogit.api.RevTree;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.api.plumbing.FindTreeChild;
 import org.geogit.api.plumbing.ResolveTreeish;
 import org.geogit.api.plumbing.diff.DepthTreeIterator;
@@ -43,7 +45,6 @@ import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.PropertyDescriptor;
-import org.opengis.util.ProgressListener;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
@@ -57,13 +58,12 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.UnmodifiableIterator;
-import com.google.inject.Inject;
 
 /**
  * Internal operation for creating a FeatureCollection from a tree content.
  * 
  */
-
+@Hookable(name = "export")
 public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
 
     private static final Function<Feature, Optional<Feature>> IDENTITY = new Function<Feature, Optional<Feature>>() {
@@ -80,8 +80,6 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
 
     private Supplier<SimpleFeatureStore> targetStoreProvider;
 
-    private StagingDatabase database;
-
     private Function<Feature, Optional<Feature>> function = IDENTITY;
 
     private ObjectId filterFeatureTypeId;
@@ -95,9 +93,7 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
     /**
      * Constructs a new export operation.
      */
-    @Inject
-    public ExportOp(StagingDatabase database) {
-        this.database = database;
+    public ExportOp() {
         this.transactional = true;
     }
 
@@ -106,10 +102,9 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
      * 
      * @return a FeatureCollection with the specified features
      */
-    @SuppressWarnings("deprecation")
     @Override
-    public SimpleFeatureStore call() {
-
+    protected SimpleFeatureStore _call() {
+        final StagingDatabase database = stagingDatabase();
         if (filterFeatureTypeId != null) {
             RevObject filterType = database.getIfPresent(filterFeatureTypeId);
             checkArgument(filterType instanceof RevFeatureType,
@@ -203,7 +198,7 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
 
             @Override
             public NodeRef apply(NodeRef input) {
-                progressListener.progress((count.incrementAndGet() * 100.f) / typeTree.size());
+                progressListener.setProgress((count.incrementAndGet() * 100.f) / typeTree.size());
                 return input;
             }
         });
@@ -311,7 +306,7 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
     private Iterator<SimpleFeature> alter(Iterator<SimpleFeature> plainFeatures,
             final ObjectId targetFeatureTypeId) {
 
-        final RevFeatureType targetType = database.getFeatureType(targetFeatureTypeId);
+        final RevFeatureType targetType = stagingDatabase().getFeatureType(targetFeatureTypeId);
 
         Function<SimpleFeature, SimpleFeature> alterFunction = new Function<SimpleFeature, SimpleFeature>() {
             @Override
@@ -369,7 +364,7 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
         checkArgument(rootTreeId.isPresent(), "Invalid tree spec: %s",
                 refspec.substring(0, refspec.indexOf(':')));
 
-        RevTree rootTree = database.getTree(rootTreeId.get());
+        RevTree rootTree = stagingDatabase().getTree(rootTreeId.get());
         return rootTree;
     }
 
@@ -474,7 +469,7 @@ public class ExportOp extends AbstractGeoGitOp<SimpleFeatureStore> {
      * It is up to the user performing the export to ensure that the function actually generates
      * valid features for the current FeatureStore.
      * 
-     * If no function is explicitly set, and identity function is used, and Features are not
+     * If no function is explicitly set, an identity function is used, and Features are not
      * converted.
      * 
      * This function can be used as a filter as well. If the returned object is Optional.absent, no

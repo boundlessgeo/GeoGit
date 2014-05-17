@@ -15,6 +15,7 @@ import javax.annotation.Nullable;
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.FeatureBuilder;
 import org.geogit.api.NodeRef;
+import org.geogit.api.ProgressListener;
 import org.geogit.api.Ref;
 import org.geogit.api.RevFeature;
 import org.geogit.api.RevFeatureType;
@@ -25,6 +26,7 @@ import org.geogit.api.data.ForwardingFeatureSource;
 import org.geogit.api.plumbing.LsTreeOp;
 import org.geogit.api.plumbing.LsTreeOp.Strategy;
 import org.geogit.api.plumbing.RevObjectParse;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.geotools.plumbing.GeoToolsOpException.StatusCode;
 import org.geogit.repository.WorkingTree;
 import org.geotools.data.DataStore;
@@ -45,7 +47,6 @@ import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.feature.type.FeatureType;
 import org.opengis.feature.type.PropertyDescriptor;
 import org.opengis.filter.identity.FeatureId;
-import org.opengis.util.ProgressListener;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
@@ -53,7 +54,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.google.inject.Inject;
 import com.vividsolutions.jts.geom.CoordinateSequenceFactory;
 import com.vividsolutions.jts.geom.impl.PackedCoordinateSequenceFactory;
 
@@ -62,7 +62,7 @@ import com.vividsolutions.jts.geom.impl.PackedCoordinateSequenceFactory;
  * 
  * @see DataStore
  */
-
+@Hookable(name = "import")
 public class ImportOp extends AbstractGeoGitOp<RevTree> {
 
     private boolean all = false;
@@ -98,12 +98,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
      */
     private boolean alter;
 
-    /**
-     * Constructs a new {@code ImportOp} operation.
-     */
-    @Inject
-    public ImportOp() {
-    }
+    private boolean usePaging = true;
 
     /**
      * Executes the import operation using the parameters that have been specified. Features will be
@@ -112,9 +107,8 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
      * 
      * @return RevTree the new working tree
      */
-    @SuppressWarnings("deprecation")
     @Override
-    public RevTree call() {
+    protected  RevTree _call() {
 
         // check preconditions and get the actual list of type names to import
         final String[] typeNames = checkPreconditions();
@@ -128,7 +122,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             overwrite = false;
         }
 
-        final WorkingTree workTree = getWorkTree();
+        final WorkingTree workTree = workingTree();
 
         final boolean destPathProvided = destPath != null;
         if (destPathProvided && overwrite) {
@@ -174,6 +168,9 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
 
             featureSource = new ForceTypeAndFidFeatureSource<FeatureType, Feature>(featureSource,
                     featureType, fidPrefix);
+            if (!usePaging) {
+                ((ForceTypeAndFidFeatureSource) featureSource).setForbidSorting(true);
+            }
 
             ProgressListener taskProgress = subProgress(100.f / typeNames.length);
             if (overwrite) {
@@ -204,7 +201,7 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
             }
         }
 
-        progressListener.progress(100.f);
+        progressListener.setProgress(100.f);
         progressListener.complete();
         return workTree.getTree();
     }
@@ -564,8 +561,8 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
     }
 
     /**
-     * Sets the name to use for the geometry descriptor. If not provided, the geometry name from
-     * the source schema will be used.
+     * Sets the name to use for the geometry descriptor. If not provided, the geometry name from the
+     * source schema will be used.
      * 
      * @param geomName
      */
@@ -573,5 +570,10 @@ public class ImportOp extends AbstractGeoGitOp<RevTree> {
         this.geomName = geomName;
         return this;
 
+    }
+
+    public ImportOp setUsePaging(boolean usePaging) {
+        this.usePaging = usePaging;
+        return this;
     }
 }

@@ -17,22 +17,19 @@ import javax.annotation.Nullable;
 import org.geogit.api.AbstractGeoGitOp;
 import org.geogit.api.CommitBuilder;
 import org.geogit.api.ObjectId;
-import org.geogit.api.Platform;
 import org.geogit.api.Ref;
 import org.geogit.api.RevCommit;
 import org.geogit.api.RevPerson;
 import org.geogit.api.RevTree;
 import org.geogit.api.SymRef;
+import org.geogit.api.hooks.Hookable;
 import org.geogit.api.plumbing.RefParse;
 import org.geogit.api.plumbing.ResolveTreeish;
 import org.geogit.api.plumbing.RevObjectParse;
 import org.geogit.api.plumbing.UpdateRef;
 import org.geogit.api.plumbing.UpdateSymRef;
 import org.geogit.api.plumbing.WriteTree2;
-import org.geogit.api.plumbing.merge.Conflict;
-import org.geogit.api.plumbing.merge.ConflictsReadOp;
 import org.geogit.api.plumbing.merge.ReadMergeCommitMessageOp;
-import org.geogit.di.CanRunDuringConflict;
 import org.geogit.storage.ObjectDatabase;
 
 import com.google.common.base.Optional;
@@ -40,7 +37,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Lists;
-import com.google.inject.Inject;
 
 /**
  * Commits the staged changed in the index to the repository, creating a new commit pointing to the
@@ -53,12 +49,8 @@ import com.google.inject.Inject;
  * </p>
  * 
  */
-@CanRunDuringConflict
+@Hookable(name = "commit")
 public class CommitOp extends AbstractGeoGitOp<RevCommit> {
-
-    private final ObjectDatabase objectDb;
-
-    private final Platform platform;
 
     private Optional<String> authorName;
 
@@ -90,17 +82,6 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
     private boolean amend;
 
     private final List<String> pathFilters = Lists.newLinkedList();
-
-    /**
-     * Constructs a new {@code CommitOp} with the given parameters.
-     * 
-     * @param platform the current platform
-     */
-    @Inject
-    public CommitOp(final ObjectDatabase objectDb, final Platform platform) {
-        this.objectDb = objectDb;
-        this.platform = platform;
-    }
 
     /**
      * If set, ignores other information for creating a commit and uses the passed one.
@@ -248,7 +229,7 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
      *         staging tree and the repository HEAD tree.
      */
     @Override
-    public RevCommit call() throws RuntimeException {
+    protected  RevCommit _call() throws RuntimeException {
         final String committer = resolveCommitter();
         final String committerEmail = resolveCommitterEmail();
         final String author = resolveAuthor();
@@ -270,11 +251,6 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
         }
         if (getProgressListener().isCanceled()) {
             return null;
-        }
-
-        List<Conflict> conflicts = command(ConflictsReadOp.class).call();
-        if (!conflicts.isEmpty()) {
-            throw new IllegalStateException("Cannot run operation while merge conflicts exist.");
         }
 
         final Optional<Ref> currHead = command(RefParse.class).setName(Ref.HEAD).call();
@@ -370,6 +346,7 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
         if (getProgressListener().isCanceled()) {
             return null;
         }
+        final ObjectDatabase objectDb = objectDatabase();
         objectDb.put(commit);
         // set the HEAD pointing to the new commit
         final Optional<Ref> branchHead = command(UpdateRef.class).setName(currentBranch)
@@ -386,7 +363,7 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
         checkState(treeId.isPresent());
         checkState(newTreeId.equals(treeId.get()));
 
-        getProgressListener().progress(100f);
+        getProgressListener().setProgress(100f);
         getProgressListener().complete();
 
         // TODO: maybe all this "heads cleaning" should be put in an independent operation
@@ -424,7 +401,7 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
      */
     public long getCommitterTimeStamp() {
         if (committerTimeStamp == null) {
-            committerTimeStamp = platform.currentTimeMillis();
+            committerTimeStamp = platform().currentTimeMillis();
         }
         return committerTimeStamp.longValue();
     }
@@ -434,7 +411,7 @@ public class CommitOp extends AbstractGeoGitOp<RevCommit> {
      */
     public int getCommitterTimeZoneOffset() {
         if (committerTimeZoneOffset == null) {
-            committerTimeZoneOffset = platform.timeZoneOffset(getCommitterTimeStamp());
+            committerTimeZoneOffset = platform().timeZoneOffset(getCommitterTimeStamp());
         }
         return committerTimeZoneOffset.intValue();
     }

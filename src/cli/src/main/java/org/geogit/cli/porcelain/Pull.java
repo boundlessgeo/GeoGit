@@ -48,7 +48,6 @@ import com.beust.jcommander.Parameters;
  * @see PullOp
  */
 @RemotesReadOnly
-@StagingDatabaseReadOnly
 @Parameters(commandNames = "pull", commandDescription = "Fetch from and merge with another repository or a local branch")
 public class Pull extends AbstractCommand implements CLICommand {
 
@@ -127,6 +126,8 @@ public class Pull extends AbstractCommand implements CLICommand {
             if (result.getOldRef() != null && result.getNewRef() != null
                     && result.getOldRef().equals(result.getNewRef())) {
                 console.println("Already up to date.");
+            } else if (result.getOldRef() == null && result.getNewRef() == null) {
+                console.println("Nothing to pull.");
             } else {
                 Iterator<DiffEntry> iter;
                 if (result.getOldRef() == null) {
