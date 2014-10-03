@@ -11,8 +11,12 @@ package org.locationtech.geogig.web;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Logger;
+import java.net.InetAddress;
 
 import org.locationtech.geogig.api.Context;
 import org.locationtech.geogig.api.DefaultPlatform;
@@ -32,7 +36,9 @@ import org.restlet.Router;
 import org.restlet.data.Protocol;
 import org.restlet.data.Request;
 import org.restlet.data.Response;
+import org.restlet.data.Status;
 
+import com.google.common.base.Optional;
 import com.noelios.restlet.application.Decoder;
 
 /**
@@ -45,6 +51,7 @@ public class Main extends Application {
     }
 
     private RepositoryProvider repoProvider;
+    private Set<String> whiteList;
 
     public Main() {
         super();
@@ -53,6 +60,18 @@ public class Main extends Application {
     public Main(GeoGIG geogig) {
         super();
         this.repoProvider = new SingleRepositoryProvider(geogig);
+        this.whiteList = initializeWhiteList(geogig);
+    }
+
+    private static Set<String> initializeWhiteList(GeoGIG geogig) {
+        Set<String> whiteList = new HashSet<String>();
+        Optional<String> spec = geogig.getContext().configDatabase().get("serve.whitelist");
+        if (spec.isPresent()) {
+            String[] parts = spec.get().split("[ ,]");
+            System.out.println("white list : " + Arrays.toString(parts));
+            whiteList.addAll(Arrays.asList(parts));
+        }
+        return whiteList;
     }
 
     @Override
@@ -84,10 +103,36 @@ public class Main extends Application {
         repoProvider = new SingleRepositoryProvider(geogig);
     }
 
+    private boolean checkWhiteList(Request request, Logger logger) {
+        String client = request.getClientInfo().getAddress();
+        boolean authorized = false;
+        if (!whiteList.isEmpty()) {
+            if (client == null) {
+                logger.warning("No client provided in request");
+            } else if (!whiteList.contains(client)) {
+                logger.info(client + " not in whitelist");
+            } else {
+                authorized = true;
+            }
+        } else {
+            authorized = true;
+        }
+        return authorized;
+    }
+
     @Override
     public Restlet createRoot() {
 
         Router router = new Router() {
+
+            @Override
+            public void handle(Request request, Response response) {
+                if (!checkWhiteList(request, getContext().getLogger())) {
+                    response.setStatus(Status.CLIENT_ERROR_UNAUTHORIZED);
+                } else {
+                    super.handle(request, response);
+                }
+            }
 
             @Override
             protected synchronized void init(Request request, Response response) {
@@ -138,14 +183,18 @@ public class Main extends Application {
         return geogig;
     }
 
-    static void startServer(String repo) throws Exception {
+    static void startServer(String repo, boolean localhost) throws Exception {
         GeoGIG geogig = loadGeoGIG(repo);
         org.restlet.Context context = new org.restlet.Context();
         Application application = new Main(geogig);
         application.setContext(context);
         Component comp = new Component();
         comp.getDefaultHost().attach(application);
-        comp.getServers().add(Protocol.HTTP, 8182);
+        if (localhost) {
+            comp.getServers().add(Protocol.HTTP, InetAddress.getLocalHost().toString(), 8182);
+        } else {
+            comp.getServers().add(Protocol.HTTP, 8182);
+        }
         comp.start();
     }
 
@@ -159,8 +208,13 @@ public class Main extends Application {
             System.out.println("provide geogig repo path");
             System.exit(1);
         }
+        boolean local = argList.remove("--local");
+        if (!local) {
+            System.err.println("you are starting geogig in a potentially insecure manner");
+            System.err.println("provide the --local flag to bind to the localhost");
+        }
         String repo = argList.pop();
-        startServer(repo);
+        startServer(repo, local);
     }
 
 }
