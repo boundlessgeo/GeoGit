@@ -142,7 +142,7 @@
     <jsr305.version>2.0.3</jsr305.version>
     <jts.version>1.13</jts.version>
     <junit.version>4.10</junit.version>
-    <logback.version>1.1.2</logback.version>
+    <logback.version>1.2.0</logback.version>
     <mockito.version>1.9.5</mockito.version>
     <mockrunner.version>0.3.6</mockrunner.version>
     <restlet.version>1.0.8</restlet.version> <!-- matches version used in geoserver -->
